@@ -2996,7 +2996,15 @@ textarea.form-control { resize: vertical; min-height: 80px; line-height: 1.6; }
   display: flex; flex-direction: column;
   gap: 10px; align-items: center;
   border-top: 1px solid var(--border-soft);
+  /* The top ~30% of this box is visually transparent (just the gradient
+     fade), but as a sticky element it still sits in front of whatever
+     scrolls underneath it. Without this, that invisible area silently
+     eats clicks meant for buttons below it (e.g. the round selector /
+     list-vs-bracket toggle) — pointer-events is re-enabled only on the
+     actual visible controls inside, via the rule below. */
+  pointer-events: none;
 }
+.wc-submit-row > * { pointer-events: auto; }
 .wc-submit-row > .wc-submit-helper {
   width: 100%;
   max-width: 520px;
