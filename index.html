@@ -245,6 +245,55 @@
   100% { transform: scale(1); }
 }
 
+/* Share button */
+.masahatak-card-share {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  background: none;
+  border: none;
+  cursor: pointer;
+  padding: 3px 7px;
+  border-radius: 99px;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--text-muted);
+  transition: background .15s, color .15s;
+  font-family: 'Co Headline', 'Tajawal', sans-serif;
+}
+.masahatak-card-share:hover { background: rgba(49,92,59,.08); color: var(--green-dark); }
+.masahatak-card-share:active { transform: scale(.92); }
+.masahatak-card-share svg { width: 15px; height: 15px; flex-shrink: 0; }
+.masahatak-card.mas-flash { animation: masFlash 1.2s ease; }
+@keyframes masFlash {
+  0%   { box-shadow: 0 0 0 3px var(--gold); }
+  100% { box-shadow: none; }
+}
+
+/* Generic toast (used by the wall's share button, and reusable elsewhere) */
+.asaas-toast {
+  position: fixed;
+  bottom: 22px;
+  left: 50%;
+  transform: translateX(-50%) translateY(12px);
+  background: var(--green-dark);
+  color: #FFFDF8;
+  font-size: 13px;
+  font-weight: 600;
+  padding: 10px 18px;
+  border-radius: 99px;
+  box-shadow: 0 6px 18px rgba(0,0,0,.18);
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity .25s, transform .25s;
+  z-index: 9999;
+  white-space: nowrap;
+}
+.asaas-toast.show {
+  opacity: 1;
+  transform: translateX(-50%) translateY(0);
+}
+
 /* Empty state */
 .masahatak-empty {
   grid-column: 1 / -1;
@@ -9055,6 +9104,8 @@ function renderMasahatak(entries) {
     const isLiked   = likedBy.includes(mDeviceId());
     const likeSvg   = `<svg viewBox="0 0 24 24" fill="${isLiked ? 'currentColor' : 'none'}" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M7 10v12" fill="none"/><path d="M15 5.88 14 10h5.83a2 2 0 0 1 1.92 2.56l-2.33 8A2 2 0 0 1 17.5 22H4a2 2 0 0 1-2-2v-8a2 2 0 0 1 2-2h2.76a2 2 0 0 0 1.79-1.11L12 2a3.13 3.13 0 0 1 3 3.88Z"/></svg>`;
     const likeBtn   = `<button class="masahatak-card-like${isLiked ? ' liked' : ''}" onclick="mToggleLike('${e.id}', this)" title="${isLiked ? 'إلغاء الإعجاب' : 'إعجاب'}">${likeSvg}<span class="mlike-count">${likeCount > 0 ? mArabicNum(likeCount) : ''}</span></button>`;
+    const shareSvg  = `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/><line x1="8.59" y1="13.51" x2="15.42" y2="17.49"/><line x1="15.41" y1="6.51" x2="8.59" y2="10.49"/></svg>`;
+    const shareBtn  = `<button class="masahatak-card-share" onclick="mShareEntry('${e.id}')" title="مشاركة عبر رابط">${shareSvg}</button>`;
     return `<div class="masahatak-card" data-mid="${e.id}">
       ${delBtn}
       ${imgHtml}
@@ -9062,6 +9113,7 @@ function renderMasahatak(entries) {
       <div class="masahatak-card-footer">
         <span class="masahatak-card-author" style="--ini:'${initial}'">${typeTag}&nbsp;${author}</span>
         ${likeBtn}
+        ${shareBtn}
         <span class="masahatak-card-date">${mFormatDate(e.ts)}</span>
       </div>
     </div>`;
@@ -9103,6 +9155,7 @@ async function loadMasahatak() {
     const snap = await MASAHATAK_DOC.get();
     const entries = snap.exists ? (snap.data().entries || []) : [];
     renderMasahatak(entries);
+    requestAnimationFrame(() => requestAnimationFrame(mHighlightSharedPost));
   } catch(err) {
     console.error('[ASAAS] Masahatak load error:', err);
     const grid = document.getElementById('masahatakGrid');
@@ -9173,6 +9226,67 @@ async function mToggleLike(id, btnEl) {
     console.error('[ASAAS] Like error:', err);
     if (btnEl) btnEl.disabled = false;
   }
+}
+
+// ── Generic toast — small bottom-of-screen confirmation, reusable anywhere ──
+function asaasToast(message) {
+  let el = document.getElementById('asaasToast');
+  if (!el) {
+    el = document.createElement('div');
+    el.id = 'asaasToast';
+    el.className = 'asaas-toast';
+    document.body.appendChild(el);
+  }
+  el.textContent = message;
+  el.classList.add('show');
+  clearTimeout(el._hideTimer);
+  el._hideTimer = setTimeout(() => el.classList.remove('show'), 2200);
+}
+
+// ── Share a single wall post via a link that shows a real WhatsApp-style
+// preview (title/author/image) when pasted into a chat. The link points at
+// a small serverless endpoint (/api/post?id=...) which serves the post's
+// own Open Graph tags server-side — this only works on the Vercel
+// deployment (asaas-calendar-2026.vercel.app), since WhatsApp's link
+// crawler doesn't run JavaScript and a plain static GitHub Pages host has
+// no way to generate per-post meta tags. On Vercel it works automatically;
+// the function just opens that post in the live app for the visitor while
+// WhatsApp's preview reads the meta tags from the same URL.
+async function mShareEntry(id) {
+  const base = location.origin && location.origin.startsWith('http')
+    ? location.origin
+    : 'https://asaas-calendar-2026.vercel.app';
+  const shareUrl = `${base}/api/post?id=${encodeURIComponent(id)}`;
+
+  if (navigator.share) {
+    try { await navigator.share({ url: shareUrl }); return; }
+    catch (e) { if (e && e.name === 'AbortError') return; /* otherwise fall through to copy */ }
+  }
+  try {
+    await navigator.clipboard.writeText(shareUrl);
+    asaasToast('✓ تم نسخ رابط المشاركة — الصقه في واتساب');
+  } catch (e) {
+    window.prompt('انسخ رابط المشاركة:', shareUrl);
+  }
+}
+
+// ── Deep link: ?post=ID (set by /api/post's redirect) scrolls to and
+// highlights that specific card once the wall has finished loading.
+function mHighlightSharedPost() {
+  try {
+    const params = new URLSearchParams(location.search);
+    const id = params.get('post');
+    if (!id) return;
+    const card = document.querySelector(`.masahatak-card[data-mid="${CSS.escape(id)}"]`);
+    if (!card) return;
+    card.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    card.classList.add('mas-flash');
+    setTimeout(() => card.classList.remove('mas-flash'), 1300);
+    // Clean the URL so refreshing/sharing again doesn't re-trigger this.
+    params.delete('post');
+    const qs = params.toString();
+    history.replaceState(null, '', location.pathname + (qs ? '?' + qs : '') + location.hash);
+  } catch (e) { /* no-op — deep link is a nice-to-have, never block the page on it */ }
 }
 
 // ── Compress image to base64 (max 800px wide, quality 0.72) ─────
