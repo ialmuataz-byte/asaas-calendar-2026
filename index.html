@@ -4220,23 +4220,24 @@ html.view-wc.wc-dark .wc-cs-leading {
 
 /* ── 1) Bracket view ─────────────────────────────────────────── */
 .wc-bracket-wrap {
-  background: var(--card);
+  background: linear-gradient(180deg, var(--card) 0%, var(--card-2) 100%);
   border: 1px solid var(--border);
-  border-radius: 14px;
-  padding: 18px 8px 18px;
+  border-radius: 18px;
+  padding: 20px 10px 18px;
   margin-bottom: 18px;
   position: relative;
   overflow: hidden;
+  box-shadow: 0 1px 0 rgba(255,255,255,.5) inset, 0 8px 24px rgba(58,42,29,.05);
 }
 .wc-bracket-head {
   display: flex; align-items: center; justify-content: space-between;
-  padding: 0 10px 12px;
+  padding: 0 10px 14px;
   border-bottom: 1px solid var(--border-soft);
-  margin-bottom: 14px;
+  margin-bottom: 16px;
 }
 .wc-bracket-head-title {
   font-family: 'Co Headline', 'Tajawal', sans-serif;
-  font-size: 15px; font-weight: 700; color: var(--text);
+  font-size: 16px; font-weight: 800; color: var(--text);
   display: flex; align-items: center; gap: 8px;
 }
 .wc-bracket-head-hint {
@@ -4256,7 +4257,7 @@ html.view-wc.wc-dark .wc-cs-leading {
 .wc-bracket-grid {
   display: flex;
   flex-direction: row-reverse; /* RTL: R32 → ... → Final from right to left */
-  gap: 14px;
+  gap: 16px;
   min-width: max-content;
   padding: 4px 8px 8px;
   align-items: stretch;
@@ -4264,39 +4265,41 @@ html.view-wc.wc-dark .wc-cs-leading {
 .wc-bracket-col {
   display: flex;
   flex-direction: column;
-  min-width: 220px;
-  gap: 8px;
+  min-width: 222px;
+  gap: 10px;
   position: relative;
 }
 .wc-bracket-col-header {
   text-align: center;
-  font-size: 11.5px;
-  font-weight: 700;
-  letter-spacing: 1px;
+  font-size: 12px;
+  font-weight: 800;
+  letter-spacing: .3px;
   color: var(--text-soft);
-  padding: 8px 10px;
-  border-radius: 10px;
+  padding: 9px 10px;
+  border-radius: 12px;
   background: var(--bg-2);
   border: 1px solid var(--border-soft);
-  margin-bottom: 6px;
+  margin-bottom: 8px;
   display: flex;
   align-items: center; justify-content: center;
   gap: 8px;
+  box-shadow: 0 1px 2px rgba(58,42,29,.03);
 }
 .wc-bracket-col.col-open .wc-bracket-col-header {
-  background: var(--green-tint);
+  background: linear-gradient(135deg, var(--green-tint) 0%, var(--card) 100%);
   color: var(--green-dark);
   border-color: var(--green-light);
+  box-shadow: 0 2px 8px rgba(49,92,59,.10);
 }
 .wc-bracket-col.col-closed .wc-bracket-col-header {
-  opacity: .75;
+  opacity: .8;
 }
 .wc-bracket-col-status {
   display: inline-block;
   font-size: 9.5px;
-  padding: 1px 7px;
+  padding: 2px 8px;
   border-radius: 99px;
-  font-weight: 700;
+  font-weight: 800;
   letter-spacing: .3px;
   background: var(--card);
 }
@@ -4313,39 +4316,48 @@ html.view-wc.wc-dark .wc-cs-leading {
   display: flex; flex-direction: column;
   justify-content: space-around;
   flex: 1;
-  gap: 12px;
+  gap: 14px;
 }
 .wc-bm {
   background: var(--card-2);
   border: 1px solid var(--border-soft);
-  border-radius: 10px;
-  padding: 7px 9px;
+  border-inline-start: 3px solid var(--border-soft);
+  border-radius: 12px;
+  padding: 9px 11px;
   font-size: 12px;
   position: relative;
-  transition: background .2s, border-color .2s, transform .15s;
+  transition: background .2s, border-color .2s, transform .15s, box-shadow .2s;
 }
 .wc-bm.editable {
   background: var(--card);
   border-color: var(--border);
-  box-shadow: 0 2px 6px rgba(58,42,29,.04);
+  border-inline-start-color: var(--clay);
+  box-shadow: 0 2px 8px rgba(58,42,29,.05);
 }
 .wc-bm.editable:hover {
   border-color: var(--green-light);
+  border-inline-start-color: var(--green);
+  transform: translateY(-1px);
+  box-shadow: 0 4px 12px rgba(49,92,59,.08);
 }
-.wc-bm.locked { opacity: .72; }
+.wc-bm.locked { opacity: .75; }
 .wc-bm.has-result {
   border-color: var(--green-light);
+  border-inline-start-color: var(--green);
   background: linear-gradient(180deg, var(--green-tint) 0%, var(--card-2) 100%);
+  box-shadow: 0 2px 8px rgba(49,92,59,.06);
 }
 .wc-bm-side {
   display: grid;
-  grid-template-columns: auto 1fr auto;
+  grid-template-columns: auto 1fr auto auto;
   align-items: center;
   gap: 7px;
-  padding: 4px 2px;
+  padding: 5px 3px;
   font-size: 11.5px;
+  border-radius: 7px;
+  transition: background .2s;
 }
-.wc-bm-side .wc-flag-img { height: 14px; flex-shrink: 0; }
+.wc-bm-side .wc-flag-img { height: 14px; flex-shrink: 0; border-radius: 2px; }
 .wc-bm-side-name {
   white-space: nowrap;
   overflow: hidden; text-overflow: ellipsis;
@@ -4397,17 +4409,45 @@ html.view-wc.wc-dark .wc-cs-leading {
   color: var(--green-dark);
   font-variant-numeric: tabular-nums;
 }
+/* Winner / loser emphasis — purely visual, driven by the existing
+   wcKoWinnerSide() result so the advancing team stands out at a glance. */
+.wc-bm-side-winner {
+  background: var(--green-tint);
+}
+.wc-bm-side-winner .wc-bm-side-name {
+  color: var(--green-dark);
+  font-weight: 800;
+}
+.wc-bm-side-winner .wc-bm-side-score-static {
+  color: var(--green-dark);
+  font-weight: 800;
+}
+.wc-bm-side-loser {
+  opacity: .62;
+}
+.wc-bm-side-loser .wc-bm-side-name { font-weight: 400; }
+.wc-bm-side-check {
+  display: inline-flex;
+  align-items: center; justify-content: center;
+  width: 15px; height: 15px;
+  border-radius: 50%;
+  background: var(--green);
+  color: #FFFDF8;
+  font-size: 9px; font-weight: 900;
+  flex-shrink: 0;
+  line-height: 1;
+}
 .wc-bm-divider {
   height: 1px;
   background: var(--border-soft);
-  margin: 3px -9px;
+  margin: 4px -11px;
 }
 .wc-bm-result {
   text-align: center;
   font-size: 10.5px;
   color: var(--green-dark);
-  margin-top: 4px;
-  font-weight: 600;
+  margin-top: 5px;
+  font-weight: 700;
 }
 .wc-bm-mypick {
   text-align: center;
@@ -4424,41 +4464,49 @@ html.view-wc.wc-dark .wc-cs-leading {
 
 /* Champion node */
 .wc-bracket-trophy-col {
-  min-width: 140px;
+  min-width: 150px;
   justify-content: center;
   align-items: stretch;
   padding: 0 4px;
 }
 .wc-bracket-trophy {
-  background: linear-gradient(135deg, var(--gold-tint) 0%, #FFF7E0 100%);
+  background: linear-gradient(160deg, #FFF7E0 0%, var(--gold-tint) 55%, #FFF1D0 100%);
   border: 2px solid var(--gold);
-  border-radius: 14px;
-  padding: 18px 14px;
+  border-radius: 18px;
+  padding: 22px 16px 18px;
   text-align: center;
-  box-shadow: 0 4px 14px rgba(201,166,70,.25);
+  box-shadow: 0 6px 22px rgba(201,166,70,.28), 0 1px 0 rgba(255,255,255,.6) inset;
   margin: auto 0;
+  position: relative;
+  overflow: hidden;
+}
+.wc-bracket-trophy::before {
+  content: "";
+  position: absolute; inset: 0;
+  background: radial-gradient(circle at 50% -10%, rgba(255,255,255,.55) 0%, transparent 55%);
+  pointer-events: none;
 }
 .wc-bracket-trophy-icon {
-  font-size: 38px;
-  filter: drop-shadow(0 2px 4px rgba(201,166,70,.4));
-  margin-bottom: 4px;
+  font-size: 42px;
+  filter: drop-shadow(0 3px 6px rgba(201,166,70,.45));
+  margin-bottom: 5px;
   line-height: 1;
 }
 .wc-bracket-trophy-label {
   font-size: 10.5px;
-  letter-spacing: 2px;
+  letter-spacing: 2.5px;
   color: var(--clay);
-  font-weight: 700;
-  margin-bottom: 6px;
+  font-weight: 800;
+  margin-bottom: 8px;
   text-transform: uppercase;
 }
 .wc-bracket-trophy-winner {
   display: flex;
   align-items: center;
   justify-content: center;
-  gap: 6px;
-  font-size: 13.5px;
-  font-weight: 700;
+  gap: 7px;
+  font-size: 14.5px;
+  font-weight: 800;
   color: var(--text);
 }
 .wc-bracket-trophy-winner.tbd {
@@ -4545,19 +4593,20 @@ html.view-wc.wc-dark .wc-cs-leading {
 .wc-bracket-wrap { display: none; }
 
 .wcbt-wrap {
-  background: var(--card);
+  background: linear-gradient(180deg, var(--card) 0%, var(--card-2) 100%);
   border: 1px solid var(--border);
-  border-radius: 14px;
-  padding: 18px 8px;
+  border-radius: 18px;
+  padding: 20px 10px;
   margin-bottom: 18px;
   position: relative;
   overflow: hidden;
+  box-shadow: 0 1px 0 rgba(255,255,255,.5) inset, 0 8px 24px rgba(58,42,29,.05);
 }
 .wcbt-head {
   display: flex; align-items: center; justify-content: space-between;
-  padding: 0 10px 12px;
+  padding: 0 10px 14px;
   border-bottom: 1px solid var(--border-soft);
-  margin-bottom: 14px;
+  margin-bottom: 16px;
 }
 .wcbt-scroll {
   overflow-x: auto;
@@ -4583,22 +4632,28 @@ html.view-wc.wc-dark .wc-cs-leading {
 .wcbt-col {
   display: flex;
   flex-direction: column;
-  width: 182px;
+  width: 184px;
   flex: 0 0 auto;
 }
 .wcbt-col-label {
-  height: 30px;
+  height: 32px;
   display: flex; align-items: center; justify-content: center; gap: 6px;
-  font-size: 11px; font-weight: 700; letter-spacing: .3px;
+  font-size: 11px; font-weight: 800; letter-spacing: .3px;
   color: var(--text-soft);
   background: var(--bg-2);
   border: 1px solid var(--border-soft);
-  border-radius: 8px;
-  margin: 0 3px 6px;
+  border-radius: 99px;
+  margin: 0 3px 8px;
   white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+  box-shadow: 0 1px 2px rgba(58,42,29,.03);
 }
-.wcbt-col-label.is-open   { background: var(--green-tint); color: var(--green-dark); border-color: var(--green-light); }
-.wcbt-col-label.is-closed { opacity: .7; }
+.wcbt-col-label.is-open   {
+  background: linear-gradient(135deg, var(--green-tint) 0%, var(--card) 100%);
+  color: var(--green-dark);
+  border-color: var(--green-light);
+  box-shadow: 0 2px 8px rgba(49,92,59,.10);
+}
+.wcbt-col-label.is-closed { opacity: .75; }
 .wcbt-col-slots {
   display: flex;
   flex-direction: column;
@@ -4618,14 +4673,14 @@ html.view-wc.wc-dark .wc-cs-leading {
    each slot's vertical centre lands exactly on the midpoint between its
    two feeder matches one column over — flexbox's equal flex:1 slots give
    that centering for free, no manual pixel offsets needed anywhere. */
-.wcbt-conn-col { width: 22px; }
+.wcbt-conn-col { width: 24px; }
 .wcbt-conn-slot { position: relative; flex: 1 1 0; }
-.wcbt-line { position: absolute; background: var(--border); }
-.wcbt-line.v     { left: 50%; top: 25%; bottom: 25%; width: 2px; margin-left: -1px; }
-.wcbt-line.h-top { left: 0; right: 50%; top: 25%; height: 2px; margin-top: -1px; }
-.wcbt-line.h-bot { left: 0; right: 50%; top: 75%; height: 2px; margin-top: -1px; }
-.wcbt-line.h-out { left: 50%; right: 0; top: 50%; height: 2px; margin-top: -1px; }
-.wcbt-line.h-mid { left: 0; right: 0; top: 50%; height: 2px; margin-top: -1px; }
+.wcbt-line { position: absolute; background: var(--gold-soft); border-radius: 2px; }
+.wcbt-line.v     { left: 50%; top: 25%; bottom: 25%; width: 2.5px; margin-left: -1.25px; }
+.wcbt-line.h-top { left: 0; right: 50%; top: 25%; height: 2.5px; margin-top: -1.25px; }
+.wcbt-line.h-bot { left: 0; right: 50%; top: 75%; height: 2.5px; margin-top: -1.25px; }
+.wcbt-line.h-out { left: 50%; right: 0; top: 50%; height: 2.5px; margin-top: -1.25px; }
+.wcbt-line.h-mid { left: 0; right: 0; top: 50%; height: 2.5px; margin-top: -1.25px; }
 /* The right half mirrors the left half, so every connector's lines just
    get flipped horizontally — far simpler than computing a second set of
    positions (these slots hold only decorative lines, never text, so a
@@ -4633,14 +4688,16 @@ html.view-wc.wc-dark .wc-cs-leading {
 .wcbt-half-right .wcbt-conn-slot { transform: scaleX(-1); }
 
 .wcbt-final-col {
-  width: 200px;
+  width: 204px;
   flex: 0 0 auto;
   display: flex; flex-direction: column; align-items: center; justify-content: center;
-  min-height: calc(var(--wcbt-half-h, 736px) + 30px);
-  padding: 0 10px;
-  gap: 12px;
+  min-height: calc(var(--wcbt-half-h, 736px) + 32px);
+  padding: 0 12px;
+  gap: 14px;
 }
 .wcbt-final-card, .wcbt-final-card .wc-bm { width: 100%; }
+.wcbt-final-card .wc-bm { border-width: 1.5px; }
+
 
 @media (max-width: 1024px) {
   .wcbt-wrap { display: none; }
@@ -14345,17 +14402,28 @@ function wcRenderBracketMatch(stage, idx, m, d, status) {
     return `<span class="wc-bm-side-score-static" style="color:var(--text-mute)">${val != null ? val : '—'}</span>`;
   };
 
+  // Which side actually advances (official result + penWinner when tied) —
+  // purely presentational, reuses the existing wcKoWinnerSide() result, so
+  // the eliminated side can be visually muted and the winner highlighted.
+  const winnerSide = officialIn ? wcKoWinnerSide(m) : null;
+  const sideCls = side => {
+    if (!winnerSide) return '';
+    return side === winnerSide ? ' wc-bm-side-winner' : ' wc-bm-side-loser';
+  };
+
   const homeRow = `
-    <div class="wc-bm-side">
+    <div class="wc-bm-side${sideCls('home')}">
       ${home ? wcFlagImg(home.code, 14) : '<span class="wc-bm-side-tbd-flag"></span>'}
       <span class="wc-bm-side-name${home ? '' : ' tbd'}">${home ? wcEsc(home.name) : wcEsc(wcKoSlotLabel(stage.id, idx, 'home') || t('wc.bracket.tbd'))}</span>
       ${scoreCtrl('home', d.homeScore)}
+      ${winnerSide === 'home' ? '<span class="wc-bm-side-check" aria-hidden="true">✓</span>' : ''}
     </div>`;
   const awayRow = `
-    <div class="wc-bm-side">
+    <div class="wc-bm-side${sideCls('away')}">
       ${away ? wcFlagImg(away.code, 14) : '<span class="wc-bm-side-tbd-flag"></span>'}
       <span class="wc-bm-side-name${away ? '' : ' tbd'}">${away ? wcEsc(away.name) : wcEsc(wcKoSlotLabel(stage.id, idx, 'away') || t('wc.bracket.tbd'))}</span>
       ${scoreCtrl('away', d.awayScore)}
+      ${winnerSide === 'away' ? '<span class="wc-bm-side-check" aria-hidden="true">✓</span>' : ''}
     </div>`;
 
   const resultBar = officialIn
