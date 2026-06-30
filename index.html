@@ -12746,6 +12746,7 @@ function wcRenderKOForm(stage, isGuest) {
     const resultIn = (hasOfficial || kickedOff || isGuest) && !wcState.editTargetId;
     const home = WC_TEAM_MAP[wcKoResolvedTeamCode(stage.id, i, 'home', m)] || null;
     const away = WC_TEAM_MAP[wcKoResolvedTeamCode(stage.id, i, 'away', m)] || null;
+    const livePts = hasOfficial ? wcKoMatchPickPoints(stage.id, i, d) : 0;
     const ptsBadge = hasOfficial
       ? `<div class="wc-match-pts ${livePts > 0 ? 'pos' : 'zero'}" data-wckopts="${stage.id}|${i}">${livePts > 0 ? '+' : ''}${livePts} ${t('wc.lb.point')}</div>`
       : '';
