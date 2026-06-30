@@ -2571,8 +2571,44 @@ textarea.form-control { resize: vertical; min-height: 80px; line-height: 1.6; }
   .wc-hero-flags img { height: 13px; width: 19px; }
   .wc-hero-title { font-size: 19px; }
   .wc-hero-sub { font-size: 11.5px; }
-  .wc-hero-stages { margin-top: -22px; }
-  .wc-hero-stage-chip { padding: 7px 11px; font-size: 11.5px; }
+}
+
+/* Round selector — single row inside the predict tab that controls which
+   ONE round's card is currently shown. This is the main fix for the old
+   "everything stacked at once" layout: one clear strip, one active state. */
+.wc-round-selector {
+  display: flex; gap: 8px;
+  overflow-x: auto; scrollbar-width: thin;
+  margin: 0 0 16px;
+  padding: 2px 2px 6px;
+}
+.wc-round-chip {
+  flex: 0 0 auto;
+  display: flex; align-items: center; gap: 6px;
+  background: var(--card-2, var(--beige));
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  padding: 8px 14px;
+  font-family: inherit; font-size: 12.5px; font-weight: 700;
+  color: var(--text-muted, var(--text));
+  cursor: pointer;
+  transition: all .15s;
+  white-space: nowrap;
+}
+.wc-round-chip:hover { border-color: var(--green-light); color: var(--green-dark); }
+.wc-round-chip.active {
+  background: var(--green); border-color: var(--green); color: #fff;
+  box-shadow: var(--shadow-sm);
+}
+.wc-round-chip .ico { font-size: 14px; line-height: 1; }
+.wc-round-dot { width: 7px; height: 7px; border-radius: 50%; background: var(--border); }
+.wc-round-dot.open { background: #2FA84F; }
+.wc-round-dot.closed { background: var(--gold); }
+.wc-round-chip.active .wc-round-dot.open,
+.wc-round-chip.active .wc-round-dot.closed { background: #fff; opacity: .8; }
+
+@media (max-width: 720px) {
+  .wc-round-chip { padding: 7px 11px; font-size: 11.5px; }
 }
 
 .wc-header {
@@ -5790,16 +5826,6 @@ html[lang="en"] .wc-podium-spot.me::after { content: "YOU"; }
         <div class="wc-hero-title" data-i18n="wc.title">تحدّي توقعات كأس العالم 2026</div>
         <div class="wc-hero-sub" data-i18n="wc.subtitle">توقع نتائج المباريات، اجمع النقاط، وتابع ترتيبك بين المشاركين</div>
       </div>
-    </div>
-
-    <!-- Stage capsules — tap to jump straight to that round -->
-    <div class="wc-hero-stages" id="wcHeroStages">
-      <button type="button" class="wc-hero-stage-chip" onclick="wcScrollToStage('groups')"><span class="ico">📋</span><span data-i18n="wc.stage.groups">دور المجموعات</span></button>
-      <button type="button" class="wc-hero-stage-chip" onclick="wcScrollToStage('r32')"><span class="ico">⚔️</span><span data-i18n="wc.stage.r32">دور الـ32</span></button>
-      <button type="button" class="wc-hero-stage-chip" onclick="wcScrollToStage('r16')"><span class="ico">🛡️</span><span data-i18n="wc.stage.r16">دور الـ16</span></button>
-      <button type="button" class="wc-hero-stage-chip" onclick="wcScrollToStage('qf')"><span class="ico">⚡</span><span data-i18n="wc.stage.qf">ربع النهائي</span></button>
-      <button type="button" class="wc-hero-stage-chip" onclick="wcScrollToStage('sf')"><span class="ico">🔥</span><span data-i18n="wc.stage.sf">نصف النهائي</span></button>
-      <button type="button" class="wc-hero-stage-chip" onclick="wcScrollToStage('final')"><span class="ico">🏆</span><span data-i18n="wc.stage.final">النهائي</span></button>
     </div>
 
     <div class="wc-section" id="wcSection">
@@ -11342,6 +11368,7 @@ const wcState = {
   lbStage: 'overall',      // overall | groups | r32 | r16 | qf | sf | final
   lbShowMe: false,         // true → leaderboard tab shows the personal contestant card
   koView: 'list',          // bracket | list (knockout display mode) — list is the default view
+  activeRound: null,       // groups | r32 | r16 | qf | sf | final — which single round the predict tab shows; null = not yet decided
   stageDetailsOpen: {},    // { [stageId]: true } — closed-stage standings/picks panel, collapsed by default
   prevTotals: null,        // { [playerId]: prevTotalScore }  for + animation
   countdownTimer: null,    // setInterval handle for big countdown
@@ -12260,8 +12287,31 @@ function wcStageEffectiveCloseTime(stage) {
 // this switches both of those first if needed, re-renders, then scrolls
 // once the new DOM has actually committed.
 window.wcScrollToStage = function(stageId) {
+  wcSetActiveRound(stageId);
+};
+
+// Picks the round shown by default when nothing has been chosen yet: the
+// currently OPEN round if there is one, otherwise the next UPCOMING round,
+// otherwise the last CLOSED round (tournament finished) — always falls
+// back to the first stage so this never returns nothing.
+function wcDefaultActiveRound() {
+  const open = WC_STAGES.find(s => wcStageStatus(s) === 'open');
+  if (open) return open.id;
+  const upcoming = WC_STAGES.find(s => wcStageStatus(s) === 'upcoming');
+  if (upcoming) return upcoming.id;
+  const closed = [...WC_STAGES].reverse().find(s => wcStageStatus(s) === 'closed');
+  if (closed) return closed.id;
+  return WC_STAGES[0].id;
+}
+
+// Switches the predict tab to show ONLY this round's card — this is the
+// single source of truth for "which round is the user looking at right now".
+// Used by the hero round-chips, the opportunity card's jump button, and
+// admin-edit deep links.
+window.wcSetActiveRound = function(stageId) {
   let needsRender = false;
   if (wcState.tab !== 'predict') { wcState.tab = 'predict'; needsRender = true; }
+  if (wcState.activeRound !== stageId) { wcState.activeRound = stageId; needsRender = true; }
   if (stageId !== 'groups' && wcState.koView !== 'list') {
     wcState.koView = 'list';
     try { localStorage.setItem('asaas_wc_koView', 'list'); } catch(e) {}
@@ -12435,27 +12485,30 @@ function wcRenderPredict() {
   // Separate groups stage card from knockout stages
   const groupsStageObj = WC_STAGES.find(s => s.id === 'groups');
   const koStages = WC_STAGES.filter(s => s.id !== 'groups');
-  const groupsCard = wcRenderStageCard(groupsStageObj);
 
-  // Knockout section: bracket or list depending on koView
-  let koSection = '';
+  let stageCards = '';
   if (adminEdit) {
-    // Admin override: always use the per-stage editable list form (not the
-    // read-mostly bracket view) so every round — open or closed — stays
-    // editable while editing on a participant's behalf.
-    koSection = koStages.map(s => wcRenderStageCard(s)).join('');
+    // Admin override keeps the full list, every round visible and editable
+    // at once — admins need the overview, this isn't the confusing part.
+    stageCards = wcRenderStageCard(groupsStageObj) + koStages.map(s => wcRenderStageCard(s)).join('');
   } else {
     const anyKOTouched = koStages.some(s =>
       ((wcState.results.knockout && wcState.results.knockout[s.id]) || []).some(m => m && (m.home || m.away))
     );
-    if (anyKOTouched) {
-      koSection = wcRenderViewToggle() + (wcState.koView === 'bracket' ? wcRenderBracket() : koStages.map(s => wcRenderStageCard(s)).join(''));
+    if (wcState.koView === 'bracket' && anyKOTouched) {
+      // Opt-in "see the whole tree" view — unchanged.
+      stageCards = wcRenderViewToggle() + wcRenderBracket();
     } else {
-      // No matchups announced yet — fall back to stage list (which shows empty/upcoming states)
-      koSection = koStages.map(s => wcRenderStageCard(s)).join('');
+      // Default, simplified view: ONE round at a time, picked by the round
+      // selector below, so the participant is never scrolling past five
+      // other rounds to find the one that's actually open right now.
+      if (!wcState.activeRound) wcState.activeRound = wcDefaultActiveRound();
+      const activeStage = WC_STAGES.find(s => s.id === wcState.activeRound) || groupsStageObj;
+      const activeCard = wcRenderStageCard(activeStage);
+      stageCards = wcRenderRoundSelector(activeStage.id) + activeCard
+        + (anyKOTouched ? wcRenderViewToggle() : '');
     }
   }
-  const stageCards = groupsCard + koSection;
 
   // Guests have no identity to submit under, and the opportunity card is
   // already a no-op for them (it returns '' without a registered name) —
@@ -13973,6 +14026,28 @@ function wcStartCountdownLoop() {
 }
 
 // ── (1) Bracket view of all knockout stages ──────────────────────
+// A compact, single row of round chips (دور المجموعات → النهائي) that picks
+// which ONE round the predict tab currently shows. This replaces the old
+// design where every round's card was stacked one after another — the
+// participant now always sees exactly one round at a time, with a clear
+// indication of which one, and a one-tap way to jump to another.
+function wcRenderRoundSelector(activeId) {
+  const isEn = (CURRENT_LANG === 'en');
+  const chips = WC_STAGES.map(s => {
+    const status = wcStageStatus(s);
+    const dot = status === 'open' ? '<span class="wc-round-dot open"></span>'
+      : status === 'closed' ? '<span class="wc-round-dot closed"></span>' : '';
+    return `
+      <button type="button" class="wc-round-chip ${s.id === activeId ? 'active' : ''}"
+              onclick="wcSetActiveRound('${s.id}')">
+        <span class="ico">${s.icon}</span>
+        <span>${wcEsc(t('wc.stage.' + s.id))}</span>
+        ${dot}
+      </button>`;
+  }).join('');
+  return `<div class="wc-round-selector" role="tablist" aria-label="${isEn ? 'Round' : 'الدور'}">${chips}</div>`;
+}
+
 function wcRenderViewToggle() {
   return `
     <div class="wc-view-toggle" role="group" aria-label="Knockout view">
