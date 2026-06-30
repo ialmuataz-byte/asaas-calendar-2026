@@ -12426,7 +12426,8 @@ function wcRenderOpportunityCard() {
       </div>
       <div class="wc-oc-chips">${statusChip}${timeChip}${countChip}</div>
       ${allDone
-        ? `<div class="wc-oc-sub">${isEn ? 'All set — your picks are saved. You can still edit them before the deadline.' : 'جاهز؟ توقعاتك محفوظة ويمكنك تعديلها قبل الإغلاق'}</div>`
+        ? `<div class="wc-oc-sub">${isEn ? 'All set — your picks are saved. You can still edit them before the deadline.' : 'جاهز؟ توقعاتك محفوظة ويمكنك تعديلها قبل الإغلاق'}</div>
+           <button type="button" class="wc-oc-btn" style="margin-top:10px" onclick="wcScrollToStage('${stage.id}')">${isEn ? '✏️ Edit your predictions' : '✏️ تعديل التوقعات'}</button>`
         : `<button type="button" class="wc-oc-btn" onclick="wcScrollToStage('${stage.id}')">${ctaLabel}</button>`}
     </div>`;
 }
