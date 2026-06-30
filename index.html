@@ -12317,21 +12317,31 @@ function wcDefaultActiveRound() {
 // Used by the hero round-chips, the opportunity card's jump button, and
 // admin-edit deep links.
 window.wcSetActiveRound = function(stageId) {
-  let needsRender = false;
-  if (wcState.tab !== 'predict') { wcState.tab = 'predict'; needsRender = true; }
-  if (wcState.activeRound !== stageId) { wcState.activeRound = stageId; needsRender = true; }
+  wcState.tab = 'predict';
+  wcState.activeRound = stageId;
+  // Always force the editable list form (not the read-only bracket tree) —
+  // this is what actually contains the input fields the participant needs
+  // to edit, so jumping here must never leave them looking at the tree.
   if (stageId !== 'groups' && wcState.koView !== 'list') {
     wcState.koView = 'list';
     try { localStorage.setItem('asaas_wc_koView', 'list'); } catch(e) {}
-    needsRender = true;
   }
-  if (needsRender) wcRender();
+  // Always re-render — even if nothing above changed (e.g. the user was
+  // already on this exact round) — so the button always visibly does
+  // something instead of silently no-op-ing when the state looked the same.
+  wcRender();
   requestAnimationFrame(() => requestAnimationFrame(() => {
     const el = document.getElementById('wcStageCard-' + stageId);
     if (!el) return;
     el.scrollIntoView({ behavior: 'smooth', block: 'start' });
     el.classList.add('wc-stage-card-flash');
     setTimeout(() => el.classList.remove('wc-stage-card-flash'), 1200);
+    // Focus the first still-editable score input in this round, if any —
+    // this is the concrete "let me edit what's left" action: it drops the
+    // participant's cursor straight into the first match that hasn't
+    // kicked off yet, instead of just scrolling to the top of the card.
+    const firstOpenInput = el.querySelector('input[data-wci]:not([disabled])');
+    if (firstOpenInput) firstOpenInput.focus({ preventScroll: true });
   }));
 };
 
