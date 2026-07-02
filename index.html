@@ -3256,6 +3256,43 @@ textarea.form-control { resize: vertical; min-height: 80px; line-height: 1.6; }
 }
 .wcv-meta strong { color: var(--green-dark); }
 
+/* ─── Participant stat boxes (points / correct wins / correct results) ─── */
+.wcv-stats-row {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 10px;
+  margin-bottom: 18px;
+}
+.wcv-stat-box {
+  position: relative;
+  overflow: hidden;
+  text-align: center;
+  padding: 14px 8px 12px;
+  border-radius: 14px;
+  background:
+    radial-gradient(circle, rgba(255,255,255,.07) 1px, transparent 1.4px) 0 0/14px 14px,
+    linear-gradient(160deg, #2c2210 0%, #1b1608 70%, #120e05 100%);
+  border: 1.5px solid var(--gold);
+  box-shadow: 0 0 0 1px rgba(201,166,70,.25), 0 0 14px rgba(201,166,70,.35), inset 0 0 10px rgba(0,0,0,.35);
+}
+.wcv-stat-label {
+  font-family: 'Co Headline', 'Tajawal', sans-serif;
+  font-size: 12.5px; font-weight: 700;
+  color: var(--gold-soft);
+  margin-bottom: 6px;
+  text-shadow: 0 0 6px rgba(201,166,70,.5);
+}
+.wcv-stat-value {
+  font-family: 'Co Headline', 'Tajawal', sans-serif;
+  font-size: 26px; font-weight: 800;
+  color: #FFFDF8;
+  font-variant-numeric: tabular-nums;
+}
+@media (max-width: 480px) {
+  .wcv-stat-value { font-size: 21px; }
+  .wcv-stat-label { font-size: 11px; }
+}
+
 .wcv-section {
   margin-bottom: 22px;
 }
@@ -6303,6 +6340,8 @@ const I18N = {
     'wc.lb.name':             'الاسم',
     'wc.lb.points':           'النقاط',
     'wc.lb.point':            'نقطة',
+    'wc.view.correctWin':     'فوز صحيح',
+    'wc.view.correctResult':  'نتيجة صحيحة',
     'wc.lb.champion':         'البطل العام',
     'wc.lb.champions':        'الأبطال المشتركون في الصدارة',
     'wc.lb.champOf':          'بطل توقعات',
@@ -6609,6 +6648,8 @@ const I18N = {
     'wc.lb.name':             'Name',
     'wc.lb.points':           'Points',
     'wc.lb.point':            'pts',
+    'wc.view.correctWin':     'Correct Wins',
+    'wc.view.correctResult':  'Correct Results',
     'wc.lb.champion':         'Overall Champion',
     'wc.lb.champions':        'Joint Champions',
     'wc.lb.champOf':          'Champion of',
@@ -12075,6 +12116,7 @@ function wcViewParticipant(participantId) {
 
   const pts = wcPointsByStage(pred);
   const total = wcTotal(pred);
+  const matchStats = wcParticipantMatchStats(pred);
 
   // Title
   const titleEl = document.getElementById('wcPredsTitle');
@@ -12100,6 +12142,20 @@ function wcViewParticipant(participantId) {
       <div>
         <div style="font-size:11px;color:var(--text-mute);letter-spacing:1px;text-transform:uppercase">${totalLbl}</div>
         <div style="font-family:'Co Headline','Tajawal',sans-serif;font-size:24px;font-weight:700;color:var(--green-dark);font-variant-numeric:tabular-nums">${total} ${t('wc.lb.point')}</div>
+      </div>
+    </div>
+    <div class="wcv-stats-row">
+      <div class="wcv-stat-box">
+        <div class="wcv-stat-label">${wcEsc(t('wc.lb.points'))}</div>
+        <div class="wcv-stat-value">${total}</div>
+      </div>
+      <div class="wcv-stat-box">
+        <div class="wcv-stat-label">${wcEsc(t('wc.view.correctWin'))}</div>
+        <div class="wcv-stat-value">${matchStats.correctWin}</div>
+      </div>
+      <div class="wcv-stat-box">
+        <div class="wcv-stat-label">${wcEsc(t('wc.view.correctResult'))}</div>
+        <div class="wcv-stat-value">${matchStats.correctExact}</div>
       </div>
     </div>
   `;
@@ -12339,6 +12395,34 @@ function wcPointsByStage(pred) {
 function wcTotal(pred) {
   const by = wcPointsByStage(pred);
   return by.groups + by.r32 + by.r16 + by.qf + by.sf + by.final;
+}
+
+// Counts, across all decided knockout matches, how many times this
+// participant picked the correct winning side ("correctWin" — includes
+// exact-score picks too, since an exact score always implies the correct
+// side) and how many times they nailed the exact score ("correctExact",
+// a strict subset of correctWin). Used for the participant stat boxes.
+function wcParticipantMatchStats(pred) {
+  let correctWin = 0, correctExact = 0;
+  ['r32', 'r16', 'qf', 'sf', 'final'].forEach(stageId => {
+    const actuals = (wcState.results.knockout && wcState.results.knockout[stageId]) || [];
+    const guesses = (pred.knockout && pred.knockout[stageId]) || [];
+    actuals.forEach((a, i) => {
+      const g = guesses[i];
+      if (!a || !g) return;
+      if (!wcKoMatchComplete(a)) return;
+      if (g.homeScore == null || g.awayScore == null) return;
+      const pSide = wcKoWinnerSide(g);
+      if (!pSide) return;
+      const aSide = wcKoWinnerSide(a);
+      if (aSide !== pSide) return;
+      correctWin++;
+      const exactScore = (g.homeScore === a.homeScore && g.awayScore === a.awayScore);
+      const exact = exactScore && (!wcKoIsTied(a) || g.penWinner === a.penWinner);
+      if (exact) correctExact++;
+    });
+  });
+  return { correctWin, correctExact };
 }
 
 // ────────────────────────────────────────────────────────────────
