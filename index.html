@@ -6136,6 +6136,12 @@ html[lang="en"] .wc-podium-spot.me::after { content: "YOU"; }
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
 
+<!-- ============================================================
+     SheetJS (xlsx) — used to export the predictions-competition
+     data (participants, picks, results) to a downloadable Excel file
+     ============================================================ -->
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+
 <!-- ── Image Lightbox ── -->
 <div id="masLightbox" role="dialog" aria-modal="true">
   <button id="masLightboxClose" aria-label="إغلاق">✕</button>
@@ -6384,6 +6390,10 @@ const I18N = {
     'wc.admin.matches':       'مباراة',
     'wc.admin.selectTeam':    '— اختر منتخب —',
     'wc.admin.autosave':      'التعديلات تُحفظ تلقائياً في Firestore.',
+    'wc.admin.export.title':   '📤 تصدير بيانات المسابقة',
+    'wc.admin.export.hint':    'نزّل نسخة كاملة (Excel) من آخر تحديث لكل مشارك وتوقعاته ونقاطه، بالإضافة إلى نتائج المجموعات والمواجهات الإقصائية الحالية. مفيدة كنسخة احتياطية أو للمشاركة خارج الموقع.',
+    'wc.admin.export.btn':     '⬇ تنزيل ملف Excel',
+    'wc.admin.export.empty':   'لا يوجد مشاركون مسجَّلون بعد — لا يوجد ما يُصدَّر حالياً.',
     'wc.summary.label':       'توقعاتك:',
 
     // ── تحسينات الأدوار الإقصائية ──────────────────────────────
@@ -6691,6 +6701,10 @@ const I18N = {
     'wc.admin.matches':       'matches',
     'wc.admin.selectTeam':    '— Select a team —',
     'wc.admin.autosave':      'Changes are saved automatically to Firestore.',
+    'wc.admin.export.title':   '📤 Export Competition Data',
+    'wc.admin.export.hint':    'Download a full (Excel) snapshot of every participant\'s latest info, picks, and points, plus the current group standings and knockout results. Useful as a backup or to share outside the site.',
+    'wc.admin.export.btn':     '⬇ Download Excel File',
+    'wc.admin.export.empty':   'No participants have registered yet — nothing to export.',
     'wc.summary.label':       'Your picks:',
 
     // ── Knockout enhancements ──────────────────────────────────
@@ -13550,6 +13564,117 @@ function wcDescribeGroupUpdate(grp, teamCode) {
   return `${name} (${isEn ? 'Group' : 'المجموعة'} ${grp})`;
 }
 
+// ────────────────────────────────────────────────────────────────
+// Export competition data (Excel) — participants, their latest
+// predictions/points, and the current official results — so the
+// admin always has an off-site backup and doesn't risk losing data.
+// ────────────────────────────────────────────────────────────────
+function wcExportCompetitionData() {
+  if (typeof XLSX === 'undefined') {
+    alert(CURRENT_LANG === 'en'
+      ? 'Export library failed to load. Check your internet connection and try again.'
+      : 'تعذّر تحميل مكتبة التصدير. تحقّق من اتصالك بالإنترنت وحاول مجدداً.');
+    return;
+  }
+
+  const isEn = (CURRENT_LANG === 'en');
+  const teamName = (code) => {
+    const tm = WC_TEAM_MAP[code];
+    if (!tm) return code || '';
+    return isEn ? code : `${tm.flag} ${tm.name}`;
+  };
+  const fmtTs = (ts) => ts ? new Date(ts).toLocaleString(isEn ? 'en-GB' : 'ar', { dateStyle: 'medium', timeStyle: 'short' }) : '';
+
+  const preds = (wcState.predictions || []).slice();
+  const ranked = preds
+    .map(p => ({ ...p, score: wcTotal(p), byStage: wcPointsByStage(p) }))
+    .sort((a, b) => b.score - a.score || a.ts - b.ts);
+  const ranks = wcDenseRanks(ranked);
+
+  // ── Sheet 1: Leaderboard / latest snapshot per participant ──
+  const lbHeader = isEn
+    ? ['Rank', 'Name', 'Total points', 'Groups', 'Round of 32', 'Round of 16', 'Quarter-finals', 'Semi-finals', 'Final', 'Last saved']
+    : ['الترتيب', 'الاسم', 'مجموع النقاط', 'المجموعات', 'دور الـ32', 'دور الـ16', 'ربع النهائي', 'نصف النهائي', 'النهائي', 'آخر حفظ'];
+  const lbRows = ranked.map((p, i) => [
+    ranks[i], p.name, p.score,
+    p.byStage.groups, p.byStage.r32, p.byStage.r16, p.byStage.qf, p.byStage.sf, p.byStage.final,
+    fmtTs(p.ts),
+  ]);
+
+  // ── Sheet 2: Group-stage picks per participant ──
+  const grpHeader = [isEn ? 'Name' : 'الاسم', ...WC_GROUPS.map(g => (isEn ? 'Group ' : 'المجموعة ') + g.id)];
+  const grpRows = ranked.map(p => [
+    p.name,
+    ...WC_GROUPS.map(g => {
+      const picks = (p.groups && p.groups[g.id]) || [];
+      return picks.map(teamName).join(' + ');
+    }),
+  ]);
+
+  // ── Sheet 3: Knockout-stage picks per participant (one row per pick) ──
+  const koHeader = isEn
+    ? ['Name', 'Stage', 'Match #', 'Home', 'Away', 'Predicted score', 'Predicted pen. winner', 'Official score', 'Points earned']
+    : ['الاسم', 'الدور', 'رقم المباراة', 'المضيف', 'الضيف', 'التوقّع', 'الفائز بالجزاء (توقّع)', 'النتيجة الرسمية', 'النقاط المكتسبة'];
+  const koRows = [];
+  WC_STAGES.filter(s => s.id !== 'groups').forEach(stage => {
+    const actuals = (wcState.results.knockout && wcState.results.knockout[stage.id]) || [];
+    ranked.forEach(p => {
+      const guesses = (p.knockout && p.knockout[stage.id]) || [];
+      actuals.forEach((a, i) => {
+        if (!a || (!a.home && !a.away)) return; // matchup not decided yet
+        const g = guesses[i] || {};
+        const home = a.home ? teamName(a.home) : '';
+        const away = a.away ? teamName(a.away) : '';
+        const predicted = (g.homeScore != null && g.awayScore != null) ? `${g.homeScore} - ${g.awayScore}` : '';
+        const predPen = g.penWinner === 'home' ? home : g.penWinner === 'away' ? away : '';
+        const official = (a.homeScore != null && a.awayScore != null) ? `${a.homeScore} - ${a.awayScore}` : '';
+        const pts = wcKoMatchPickPoints(stage.id, i, g);
+        koRows.push([p.name, t('wc.stage.' + stage.id), i + 1, home, away, predicted, predPen, official, pts]);
+      });
+    });
+  });
+
+  // ── Sheet 4: Official group standings ──
+  const gsHeader = isEn
+    ? ['Group', 'Team', 'Played', 'W', 'D', 'L', 'GF', 'GA', 'GD', 'Points', 'Qualified']
+    : ['المجموعة', 'المنتخب', 'لعب', 'فاز', 'تعادل', 'خسر', 'له', 'عليه', 'فرق', 'نقاط', 'تأهّل'];
+  const gsRows = [];
+  WC_GROUPS.forEach(g => {
+    const standings = wcGroupStandings(g.id);
+    const qualifiers = (wcState.results.groups && wcState.results.groups[g.id]) || [];
+    standings.forEach(r => {
+      gsRows.push([g.id, teamName(r.code), r.played, r.w, r.d, r.l, r.gf, r.ga, r.gd, r.pts, qualifiers.includes(r.code) ? '✓' : '']);
+    });
+  });
+
+  // ── Sheet 5: Official knockout results ──
+  const koResHeader = isEn
+    ? ['Stage', 'Match #', 'Home', 'Away', 'Score', 'Penalty winner', 'Kickoff']
+    : ['الدور', 'رقم المباراة', 'المضيف', 'الضيف', 'النتيجة', 'الفائز بالجزاء', 'موعد الانطلاق'];
+  const koResRows = [];
+  WC_STAGES.filter(s => s.id !== 'groups').forEach(stage => {
+    const actuals = (wcState.results.knockout && wcState.results.knockout[stage.id]) || [];
+    actuals.forEach((a, i) => {
+      if (!a || (!a.home && !a.away)) return;
+      const home = a.home ? teamName(a.home) : '';
+      const away = a.away ? teamName(a.away) : '';
+      const score = (a.homeScore != null && a.awayScore != null) ? `${a.homeScore} - ${a.awayScore}` : '';
+      const pen = a.penWinner === 'home' ? home : a.penWinner === 'away' ? away : '';
+      koResRows.push([t('wc.stage.' + stage.id), i + 1, home, away, score, pen, fmtTs(a.kickoffAt ? Date.parse(a.kickoffAt) : null)]);
+    });
+  });
+
+  const wb = XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet([lbHeader, ...lbRows]), (isEn ? 'Leaderboard' : 'الترتيب').slice(0, 31));
+  XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet([grpHeader, ...grpRows]), (isEn ? 'Group Picks' : 'توقعات المجموعات').slice(0, 31));
+  XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet([koHeader, ...koRows]), (isEn ? 'Knockout Picks' : 'توقعات الإقصائي').slice(0, 31));
+  XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet([gsHeader, ...gsRows]), (isEn ? 'Group Standings' : 'ترتيب المجموعات').slice(0, 31));
+  XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet([koResHeader, ...koResRows]), (isEn ? 'Knockout Results' : 'نتائج الإقصائي').slice(0, 31));
+
+  const stamp = new Date().toISOString().slice(0, 16).replace(/[:T]/g, '-');
+  XLSX.writeFile(wb, `asaas-wc-export-${stamp}.xlsx`);
+}
+
 function wcRenderAdmin() {
   const r = wcState.results;
   const overrides = r.stageOverrides || {};
@@ -13572,6 +13697,16 @@ function wcRenderAdmin() {
     </div>
 
     ${updateLogHtml}
+
+    <div class="wc-admin-section wc-export-section">
+      <div class="wc-admin-section-title">${t('wc.admin.export.title')}</div>
+      <div style="font-size:12px;color:var(--text-mute);margin-bottom:14px;line-height:1.6">
+        ${t('wc.admin.export.hint')}
+      </div>
+      ${(wcState.predictions || []).length
+        ? `<button class="wc-gs-seed-btn" id="wcExportBtn" onclick="wcExportCompetitionData()">${t('wc.admin.export.btn')}</button>`
+        : `<div class="wc-gs-hint">${t('wc.admin.export.empty')}</div>`}
+    </div>
 
     ${wcRenderAdminParticipantsProgress()}
 
