@@ -6385,7 +6385,7 @@ const I18N = {
     'wc.gs.pts':               'نقاط',
     'wc.gs.pending':           '— لم تُلعب مباريات بعد —',
     'wc.gs.loadSeed':          'تحميل النتائج الحالية (حتى 26 يونيو)',
-    'wc.ko.loadSeed':          'تحديث نتائج دور الـ32 (حتى 30 يونيو)',
+    'wc.ko.loadSeed':          'تحديث نتائج دور الـ32 كاملةً + مواجهات دور الـ16 (حتى 4 يوليو)',
     'wc.admin.ko':             '— مواجهات ونتائج',
     'wc.admin.matches':       'مباراة',
     'wc.admin.selectTeam':    '— اختر منتخب —',
@@ -6696,7 +6696,7 @@ const I18N = {
     'wc.gs.pts':               'Pts',
     'wc.gs.pending':           '— No matches played yet —',
     'wc.gs.loadSeed':          'Load current results (as of June 26)',
-    'wc.ko.loadSeed':          'Update Round-of-32 results (as of June 30)',
+    'wc.ko.loadSeed':          'Update complete Round-of-32 results + R16 matchups (as of July 4)',
     'wc.admin.ko':            '— Matchups and results',
     'wc.admin.matches':       'matches',
     'wc.admin.selectTeam':    '— Select a team —',
@@ -12035,23 +12035,63 @@ async function wcLoadSeedGroupResults() {
 }
 window.wcLoadSeedGroupResults = wcLoadSeedGroupResults;
 
-// Snapshot of real Round-of-32 results, cross-checked against FIFA's
-// official match centre and live coverage as of June 30, 2026 (06:00 Muscat).
-// Loaded on-demand by the admin via the "Update Round-of-32 results" button
-// — same write path as manual entry, so it triggers the normal live
-// recalculation for every participant. Keyed by array index (NOT official
-// match number) per the real entry order documented above WC_KO_FEED.
-//
-// Only matches that have actually been played/completed are listed here;
-// matches not yet kicked off are intentionally left out so they aren't
-// overwritten with empty data.
-const WC_SEED_R32_RESULTS_20260630 = {
-  // idx 0 — Match 73: South Africa 0-1 Canada (Canada win, 90+2', Eustáquio) — Los Angeles, June 28
-  0: { home: 'RSA', away: 'CAN', homeScore: 0, awayScore: 1 },
-  // idx 1 — Match 76: Brazil 2-1 Japan (Sano 29', Casemiro 56', Martinelli 90+5') — Houston, June 29
-  1: { home: 'BRA', away: 'JPN', homeScore: 2, awayScore: 1 },
-  // idx 2 — Match 74: Germany 1-1 Paraguay, Paraguay win 4-3 on penalties (Havertz 54', Enciso 42') — Boston, June 29
-  2: { home: 'GER', away: 'PAR', homeScore: 1, awayScore: 1, penWinner: 'away' },
+// Snapshot of real Round-of-32 results — COMPLETE (all 16 matches played),
+// taken from the official competition export ("بعد دور الـ32.xlsx") as of
+// July 4, 2026. Loaded on-demand by the admin via the "Update Round-of-32
+// results" button — same write path as manual entry, so it triggers the
+// normal live recalculation for every participant. Keyed by array index
+// (NOT official match number) per the real entry order documented above
+// WC_KO_FEED, and home/away orientation matches how the matches were
+// actually entered in the live Admin tab (confirmed by the export).
+const WC_SEED_R32_RESULTS_20260704 = {
+  // idx 0 — Canada 1-0 South Africa (June 28)
+  0:  { home: 'CAN', away: 'RSA', homeScore: 1, awayScore: 0 },
+  // idx 1 — Japan 1-2 Brazil (June 29)
+  1:  { home: 'JPN', away: 'BRA', homeScore: 1, awayScore: 2 },
+  // idx 2 — Paraguay 1-1 Germany, Paraguay win on penalties (June 30)
+  2:  { home: 'PAR', away: 'GER', homeScore: 1, awayScore: 1, penWinner: 'home' },
+  // idx 3 — Netherlands 1-1 Morocco, Morocco win on penalties (June 30)
+  3:  { home: 'NED', away: 'MAR', homeScore: 1, awayScore: 1, penWinner: 'away' },
+  // idx 4 — Norway 2-1 Ivory Coast (June 30)
+  4:  { home: 'NOR', away: 'CIV', homeScore: 2, awayScore: 1 },
+  // idx 5 — Sweden 0-3 France (July 1)
+  5:  { home: 'SWE', away: 'FRA', homeScore: 0, awayScore: 3 },
+  // idx 6 — Mexico 2-0 Ecuador (July 1)
+  6:  { home: 'MEX', away: 'ECU', homeScore: 2, awayScore: 0 },
+  // idx 7 — England 2-1 DR Congo (July 1)
+  7:  { home: 'ENG', away: 'COD', homeScore: 2, awayScore: 1 },
+  // idx 8 — Belgium 3-2 Senegal (July 2)
+  8:  { home: 'BEL', away: 'SEN', homeScore: 3, awayScore: 2 },
+  // idx 9 — Bosnia 0-2 USA (July 2)
+  9:  { home: 'BIH', away: 'USA', homeScore: 0, awayScore: 2 },
+  // idx 10 — Austria 0-3 Spain (July 2)
+  10: { home: 'AUT', away: 'ESP', homeScore: 0, awayScore: 3 },
+  // idx 11 — Croatia 1-2 Portugal (July 3)
+  11: { home: 'CRO', away: 'POR', homeScore: 1, awayScore: 2 },
+  // idx 12 — Algeria 0-2 Switzerland (July 3)
+  12: { home: 'ALG', away: 'SUI', homeScore: 0, awayScore: 2 },
+  // idx 13 — Australia 1-1 Egypt, Egypt win on penalties (July 3)
+  13: { home: 'AUS', away: 'EGY', homeScore: 1, awayScore: 1, penWinner: 'away' },
+  // idx 14 — Cape Verde 2-3 Argentina (July 4)
+  14: { home: 'CPV', away: 'ARG', homeScore: 2, awayScore: 3 },
+  // idx 15 — Ghana 0-1 Colombia (July 4)
+  15: { home: 'GHA', away: 'COL', homeScore: 0, awayScore: 1 },
+};
+
+// Round-of-16 matchups derived from the completed R32 bracket above, per
+// the official WC_KO_FEED map (r16 slot [home, away] = winners of the two
+// listed R32 array indices). Teams only — no scores, since R16 hasn't
+// kicked off yet. Consistent with the live Admin tab (e.g. Canada already
+// appears as the home side of R16 slot 2 in the July-4 export).
+const WC_SEED_R16_MATCHUPS_20260704 = {
+  0: { home: 'PAR', away: 'FRA' },   // W(r32 idx2) × W(idx5)
+  1: { home: 'CAN', away: 'MAR' },   // W(idx0)     × W(idx3)
+  2: { home: 'BRA', away: 'NOR' },   // W(idx1)     × W(idx4)
+  3: { home: 'MEX', away: 'ENG' },   // W(idx6)     × W(idx7)
+  4: { home: 'POR', away: 'ESP' },   // W(idx11)    × W(idx10)
+  5: { home: 'USA', away: 'BEL' },   // W(idx9)     × W(idx8)
+  6: { home: 'ARG', away: 'EGY' },   // W(idx14)    × W(idx13)
+  7: { home: 'SUI', away: 'COL' },   // W(idx12)    × W(idx15)
 };
 
 // Admin-only: one-click load of the verified Round-of-32 results above into
@@ -12060,18 +12100,27 @@ const WC_SEED_R32_RESULTS_20260630 = {
 async function wcLoadSeedKnockoutResults() {
   if (!(typeof state !== 'undefined' && state.isAdmin)) return;
   const msg = (CURRENT_LANG === 'en')
-    ? 'Load the verified Round-of-32 results (as of June 30, 2026)? This will overwrite any matchups/scores already entered for these matches.'
-    : 'تحميل نتائج دور الـ32 الموثَّقة (حتى 30 يونيو 2026)؟ سيتم استبدال أي مواجهات أو نتائج مُدخَلة حالياً لهذه المباريات.';
+    ? 'Load the complete verified Round-of-32 results (all 16 matches, as of July 4, 2026) and fill in the resulting Round-of-16 matchups? This will overwrite any matchups/scores already entered for these matches.'
+    : 'تحميل نتائج دور الـ32 الموثَّقة كاملةً (جميع المباريات الـ16 — حتى 4 يوليو 2026) وتعبئة مواجهات دور الـ16 الناتجة عنها؟ سيتم استبدال أي مواجهات أو نتائج مُدخَلة حالياً لهذه المباريات.';
   if (!confirm(msg)) return;
   if (!wcState.results.knockout) wcState.results.knockout = {};
   if (!Array.isArray(wcState.results.knockout.r32)) wcState.results.knockout.r32 = [];
   const arr = wcState.results.knockout.r32;
-  Object.keys(WC_SEED_R32_RESULTS_20260630).forEach(k => {
+  Object.keys(WC_SEED_R32_RESULTS_20260704).forEach(k => {
     const idx = Number(k);
     while (arr.length <= idx) arr.push({});
-    arr[idx] = { ...arr[idx], ...JSON.parse(JSON.stringify(WC_SEED_R32_RESULTS_20260630[idx])) };
+    arr[idx] = { ...arr[idx], ...JSON.parse(JSON.stringify(WC_SEED_R32_RESULTS_20260704[idx])) };
   });
-  wcLogResultUpdate(CURRENT_LANG === 'en' ? 'Loaded official Round-of-32 results' : 'تحديث نتائج دور الـ32 الرسمية');
+  // R32 is complete → the Round-of-16 bracket is fully determined; fill in
+  // its matchups (teams only) so the admin doesn't have to enter them by hand.
+  if (!Array.isArray(wcState.results.knockout.r16)) wcState.results.knockout.r16 = [];
+  const r16 = wcState.results.knockout.r16;
+  Object.keys(WC_SEED_R16_MATCHUPS_20260704).forEach(k => {
+    const idx = Number(k);
+    while (r16.length <= idx) r16.push({});
+    r16[idx] = { ...r16[idx], ...JSON.parse(JSON.stringify(WC_SEED_R16_MATCHUPS_20260704[idx])) };
+  });
+  wcLogResultUpdate(CURRENT_LANG === 'en' ? 'Loaded complete official Round-of-32 results + Round-of-16 matchups' : 'تحديث نتائج دور الـ32 الرسمية كاملةً + مواجهات دور الـ16');
   try {
     await wcSaveResults();
   } catch (e) {
