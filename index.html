@@ -11935,6 +11935,23 @@ function wcMaybeRender(source) {
       const dl = document.getElementById('wcNameSuggestions');
       if (dl) dl.innerHTML = wcNameDatalistOptions();
     }
+    // ── Stale-draft self-heal ────────────────────────────────────
+    // On first page load the predict tab renders BEFORE this snapshot
+    // arrives, so the draft gets initialised from an EMPTY predictions
+    // array — and because this branch deliberately skips re-rendering,
+    // the page kept showing "0 points / 0 of N predicted" until the
+    // participant logged out and back in. Detect that exact state
+    // (empty draft while the saved record has picks) and rebuild +
+    // fully re-render — unless the user is mid-typing in a field, in
+    // which case defer to the next snapshot/render to avoid stealing
+    // focus (an empty draft means there's nothing to lose anyway).
+    const mine = (wcState.predictions || []).find(p => p.id === wcEffectiveId());
+    const draftEmpty = !wcState.draft || wcPredictionPickCount(wcState.draft) === 0;
+    const typing = !!(document.activeElement && /^(INPUT|SELECT|TEXTAREA)$/.test(document.activeElement.tagName));
+    if (mine && wcPredictionPickCount(mine) > 0 && draftEmpty && !typing) {
+      wcState.draft = null; // wcRender re-initialises it from the loaded record
+      wcRender();
+    }
     return;
   }
   wcRender();
@@ -12832,6 +12849,17 @@ function wcParticipantMatchStats(pred) {
 // ────────────────────────────────────────────────────────────────
 // Draft init
 // ────────────────────────────────────────────────────────────────
+// Lazy draft guard used by every render path: (re)builds the draft when it
+// doesn't exist yet, and ALSO when it exists but is empty while the saved
+// record has picks — the signature of a draft that was initialised before
+// the Firestore predictions snapshot had arrived on page load.
+function wcEnsureDraft() {
+  if (!wcState.draft) { wcInitDraft(); return; }
+  if (wcPredictionPickCount(wcState.draft) > 0) return;
+  const mine = (wcState.predictions || []).find(p => p.id === wcEffectiveId());
+  if (mine && wcPredictionPickCount(mine) > 0) wcInitDraft();
+}
+
 function wcInitDraft() {
   const mine = wcState.predictions.find(p => p.id === wcEffectiveId());
   // Align each saved knockout round to the CURRENT matchups (via the team
@@ -13026,7 +13054,7 @@ window.wcSetActiveRound = function(stageId) {
 function wcRenderOpportunityCard() {
   if (wcState.editTargetId) return ''; // not relevant while admin-editing someone else
   if (!wcState.myName) return '';      // registration screen has its own overview already
-  if (!wcState.draft) wcInitDraft();
+  wcEnsureDraft();
 
   const isEn = (typeof CURRENT_LANG !== 'undefined' && CURRENT_LANG === 'en');
   const stage = WC_STAGES.find(s => wcStageStatus(s) === 'open');
@@ -13124,7 +13152,7 @@ function wcRenderPredict() {
   const guest = !adminEdit && !wcState.myName;
   const isEn = (CURRENT_LANG === 'en');
 
-  if (!wcState.draft) wcInitDraft();
+  wcEnsureDraft();
 
   // Friendly join banner — guests can browse the whole bracket and the
   // crowd's predictions read-only; this nudges them to register so they
