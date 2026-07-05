@@ -3368,6 +3368,15 @@ textarea.form-control { resize: vertical; min-height: 80px; line-height: 1.6; }
 /* توقع خاطئ = أحمر واضح */
 .wcv-match.wrong { background: #FBE3DF; border-color: #E39B8A; }
 .wcv-exact-star { margin-inline-end: 4px; }
+/* شارة «اختاره للفوز بركلات الترجيح» بجانب المنتخب المختار عند توقع التعادل */
+.wcv-pen-pick {
+  font-size: 12px; line-height: 1;
+  background: var(--green-tint);
+  border: 1px solid var(--green-light);
+  border-radius: 20px;
+  padding: 1px 5px 2px;
+  cursor: help;
+}
 /* ─── أقسام قابلة للطي (بطاقة المشارك + الإدارة) ─────────────── */
 details.wcv-collapsible > summary { list-style: none; cursor: pointer; }
 details.wcv-collapsible > summary::-webkit-details-marker { display: none; }
@@ -12571,8 +12580,14 @@ function wcViewParticipant(participantId) {
             else if (pSide && aSide === pSide) cls = 'partial';
             else cls = 'wrong';
           }
-          const homeHTML = home ? `${home.name}${wcFlagImg(home.code, 14)}` : `<span style="color:var(--text-mute);font-style:italic">${wcEsc(wcKoSlotLabel(stageId, i, 'home') || t('wc.match.tbd'))}</span>`;
-          const awayHTML = away ? `${wcFlagImg(away.code, 14)}${away.name}` : `<span style="color:var(--text-mute);font-style:italic">${wcEsc(wcKoSlotLabel(stageId, i, 'away') || t('wc.match.tbd'))}</span>`;
+          // Which side did the participant pick to win the shootout, when
+          // their prediction is a draw? Shown as a badge on that team's
+          // name — visible even BEFORE the official result is in.
+          const pensPickLbl = (CURRENT_LANG === 'en') ? 'Picked to win on penalties' : 'اختاره للفوز بركلات الترجيح';
+          const predPenSide = (hasGuess && g.homeScore === g.awayScore && (g.penWinner === 'home' || g.penWinner === 'away')) ? g.penWinner : null;
+          const penMark = `<span class="wcv-pen-pick" title="${wcEsc(pensPickLbl)}">🥅</span>`;
+          const homeHTML = home ? `${home.name}${predPenSide === 'home' ? penMark : ''}${wcFlagImg(home.code, 14)}` : `<span style="color:var(--text-mute);font-style:italic">${wcEsc(wcKoSlotLabel(stageId, i, 'home') || t('wc.match.tbd'))}</span>`;
+          const awayHTML = away ? `${wcFlagImg(away.code, 14)}${predPenSide === 'away' ? penMark : ''}${away.name}` : `<span style="color:var(--text-mute);font-style:italic">${wcEsc(wcKoSlotLabel(stageId, i, 'away') || t('wc.match.tbd'))}</span>`;
           const predictedScore = hasGuess ? `${g.homeScore} − ${g.awayScore}` : `— − —`;
           // Exact score (with matching pen winner when tied) earns a star badge
           const exactStar = cls === 'correct' ? '<span class="wcv-exact-star" title="' + (CURRENT_LANG==='en'?'Exact score':'نتيجة مطابقة') + '">⭐</span>' : '';
@@ -12589,7 +12604,9 @@ function wcViewParticipant(participantId) {
               <div class="wcv-match-team home">${homeHTML}</div>
               <div class="wcv-score">${exactStar}${predictedScore}</div>
               <div class="wcv-match-team away">${awayHTML}</div>
-              ${actualMeta ? `<div class="wcv-match-meta"><span>${predictedLbl}: ${predictedScore}${predPenTag}</span>${actualMeta}</div>` : ''}
+              ${actualMeta
+                ? `<div class="wcv-match-meta"><span>${predictedLbl}: ${predictedScore}${predPenTag}</span>${actualMeta}</div>`
+                : (predPenTag ? `<div class="wcv-match-meta"><span>🥅${predPenTag}</span></div>` : '')}
             </div>`;
         }).join('')
       : `<div class="wcv-empty">${CURRENT_LANG==='en'?'No matchups defined yet':'لم تُعلَن المواجهات بعد'}</div>`;
@@ -15219,8 +15236,11 @@ function wcRenderBracketMatch(stage, idx, m, d, status) {
   // the official score is in (mirrors the list-view's behavior); a visitor
   // who hasn't registered has no prediction to show, so they only ever see
   // the official-result line above.
+  const myPickPenTag = (d && d.homeScore != null && d.homeScore === d.awayScore && (d.penWinner === 'home' || d.penWinner === 'away'))
+    ? ` · <span class="wc-pens-tag">🥅 ${wcEsc(t('wc.ko.pens.tag'))}: ${wcEsc(d.penWinner === 'home' ? (home?.name || '') : (away?.name || ''))}</span>`
+    : '';
   const myPickLine = (officialIn && wcState.myName && d && d.homeScore != null && d.awayScore != null)
-    ? `<div class="wc-bm-mypick">${wcEsc(t('wc.mypick'))}: ${d.homeScore} − ${d.awayScore}${golden}</div>`
+    ? `<div class="wc-bm-mypick">${wcEsc(t('wc.mypick'))}: ${d.homeScore} − ${d.awayScore}${myPickPenTag}${golden}</div>`
     : '';
 
   const officialTiedNote = (officialIn && wcKoIsTied(m) && m.penWinner)
