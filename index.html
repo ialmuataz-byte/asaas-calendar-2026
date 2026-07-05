@@ -11906,25 +11906,6 @@ function wcMaybeRender(source) {
   wcRender();
 }
 
-// Counts how many actual picks a prediction record (or draft shaped like one)
-// contains: every group qualifier chosen + every knockout match with a full
-// score entered. Used by the wipe-guard in wcSaveMyPrediction below.
-function wcPredictionPickCount(p) {
-  if (!p) return 0;
-  let n = 0;
-  const groups = p.groups || {};
-  Object.keys(groups).forEach(gid => {
-    n += Array.isArray(groups[gid]) ? groups[gid].filter(Boolean).length : 0;
-  });
-  const ko = p.knockout || {};
-  ['r32', 'r16', 'qf', 'sf', 'final'].forEach(sid => {
-    (ko[sid] || []).forEach(g => {
-      if (g && g.homeScore != null && g.awayScore != null) n++;
-    });
-  });
-  return n;
-}
-
 async function wcSaveMyPrediction() {
   const targetId = wcEffectiveId();
   const targetName = wcEffectiveName();
@@ -11942,24 +11923,6 @@ async function wcSaveMyPrediction() {
       final: [...(wcState.draft.knockout?.final || [])],
     }
   };
-  // ── Wipe guard ──────────────────────────────────────────────────
-  // The save REPLACES the participant's whole record with the current
-  // draft. If the draft is empty (e.g. it was initialised before the
-  // Firestore predictions snapshot arrived, or on a fresh device that
-  // claimed an existing name) while the saved record already contains
-  // picks, writing it through would silently erase all their previous
-  // predictions — this is exactly what happened to one participant.
-  // Block that save, rebuild the draft from the saved record, and tell
-  // the user to try again.
-  const existing = wcState.predictions.find(p => p.id === targetId);
-  if (existing && wcPredictionPickCount(existing) > 0 && wcPredictionPickCount(myPred) === 0) {
-    try { wcInitDraft(); } catch (e) {}
-    alert(CURRENT_LANG === 'en'
-      ? 'Save blocked to protect your data: your saved predictions exist, but the current form is empty and saving it would erase them. Your saved picks have been reloaded — please try again.'
-      : 'تم إيقاف الحفظ حمايةً لبياناتك: لديك توقعات محفوظة مسبقاً بينما النموذج الحالي فارغ، وحفظه سيمسحها بالكامل. أُعيد تحميل توقعاتك المحفوظة — حاول الحفظ مرة أخرى.');
-    try { wcRender(); } catch (e) {}
-    return;
-  }
   const arr = [...wcState.predictions];
   const idx = arr.findIndex(p => p.id === targetId);
   if (idx >= 0) arr[idx] = myPred; else arr.push(myPred);
