@@ -11623,6 +11623,7 @@ const wcState = {
   results: { groups: {}, groupStats: {}, knockout: { r32:[], r16:[], qf:[], sf:[], final:[] } },
   tab: 'predict',          // predict | leaderboard | admin
   lbStage: 'overall',      // overall | groups | r32 | r16 | qf | sf | final
+  fixStage: 'r16',         // which knockout round the admin prediction-repair tool shows
   lbShowMe: false,         // true → leaderboard tab shows the personal contestant card
   koView: 'list',          // bracket | list (knockout display mode) — list is the default view
   activeRound: null,       // groups | r32 | r16 | qf | sf | final — which single round the predict tab shows; null = not yet decided
@@ -11953,17 +11954,33 @@ async function wcSaveMyPrediction() {
   const targetId = wcEffectiveId();
   const targetName = wcEffectiveName();
   if (!targetId || !targetName || !wcState.draft) return;
+  // Stamp every knockout guess with the team codes it is being made FOR
+  // (as currently resolved on screen). This anchors the guess to its teams
+  // instead of a bare array index, so a later matchup correction/reorder
+  // can never silently flip or misattribute it — wcKoEffectiveGuess uses
+  // these stamps to re-align automatically.
+  const stampKO = (sid) => {
+    const src = (wcState.draft.knockout && wcState.draft.knockout[sid]) || [];
+    const matches = (wcState.results.knockout && wcState.results.knockout[sid]) || [];
+    return src.map((g, i) => {
+      if (!g || (g.homeScore == null && g.awayScore == null && !g.penWinner)) return g;
+      const h = wcKoResolvedTeamCode(sid, i, 'home', matches[i]);
+      const a = wcKoResolvedTeamCode(sid, i, 'away', matches[i]);
+      if (!h || !a) return g; // teams still TBD — leave unstamped
+      return { ...g, homeTeam: h, awayTeam: a };
+    });
+  };
   const myPred = {
     id: targetId,
     name: targetName,
     ts: Date.now(),
     groups: { ...(wcState.draft.groups || {}) },
     knockout: {
-      r32:   [...(wcState.draft.knockout?.r32   || [])],
-      r16:   [...(wcState.draft.knockout?.r16   || [])],
-      qf:    [...(wcState.draft.knockout?.qf    || [])],
-      sf:    [...(wcState.draft.knockout?.sf    || [])],
-      final: [...(wcState.draft.knockout?.final || [])],
+      r32:   stampKO('r32'),
+      r16:   stampKO('r16'),
+      qf:    stampKO('qf'),
+      sf:    stampKO('sf'),
+      final: stampKO('final'),
     }
   };
   // ── Wipe guard ──────────────────────────────────────────────────
@@ -12204,6 +12221,186 @@ async function wcLoadSeedKnockoutResults() {
 }
 window.wcLoadSeedKnockoutResults = wcLoadSeedKnockoutResults;
 
+// ────────────────────────────────────────────────────────────────
+// Admin prediction-repair tool
+// Guesses are stored index-based; when a knockout matchup was corrected
+// AFTER participants had already predicted it, their stored numbers ended
+// up attached to the wrong (often reversed) teams. These two actions fix
+// the stored data itself, in one Firestore write each:
+//   • wcAdminSwapMatchPredictions — flips home↔away for EVERY participant's
+//     guess on one match (scores + penalty winner), then stamps the guess
+//     with the current team codes so it can never silently flip again.
+//     Clicking twice swaps back — fully reversible.
+//   • wcAdminStampStagePredictions — stamps every existing guess in a round
+//     with the CURRENT matchup orientation ("lock in as displayed"), for
+//     the matches that are already showing correctly.
+// ────────────────────────────────────────────────────────────────
+function wcAdminSwapTargets(stageId, idx) {
+  return (wcState.predictions || []).filter(p => {
+    const g = p.knockout && p.knockout[stageId] && p.knockout[stageId][idx];
+    return g && (g.homeScore != null || g.awayScore != null || g.penWinner);
+  }).length;
+}
+
+async function wcAdminSwapMatchPredictions(stageId, idx) {
+  if (!(typeof state !== 'undefined' && state.isAdmin)) return;
+  const isEn = (CURRENT_LANG === 'en');
+  const matches = (wcState.results.knockout && wcState.results.knockout[stageId]) || [];
+  const m = matches[idx] || {};
+  const hc = wcKoResolvedTeamCode(stageId, idx, 'home', m);
+  const ac = wcKoResolvedTeamCode(stageId, idx, 'away', m);
+  const home = hc ? WC_TEAM_MAP[hc] : null;
+  const away = ac ? WC_TEAM_MAP[ac] : null;
+  const label = (home && away) ? `${home.name} × ${away.name}` : `#${idx + 1}`;
+  const n = wcAdminSwapTargets(stageId, idx);
+  if (!n) {
+    alert(isEn ? 'No participant has a saved prediction for this match.' : 'لا يوجد أي توقع محفوظ لهذه المباراة.');
+    return;
+  }
+  const msg = isEn
+    ? `Flip home↔away predictions of ALL participants (${n}) for: ${label}?\n\nEach participant's two score numbers (and penalty-shootout pick) will be swapped, then locked to the current matchup order. Clicking again swaps back.`
+    : `عكس توقعات جميع المشاركين (${n} توقعاً) للمباراة: ${label}؟\n\nسيتم تبديل رقمَي النتيجة (والفائز بركلات الترجيح إن وُجد) لكل مشارك، ثم تثبيت التوقع على الترتيب الحالي للمواجهة. الضغط مرة أخرى يعيدها كما كانت.`;
+  if (!confirm(msg)) return;
+  const arr = (wcState.predictions || []).map(p => {
+    const ko = p.knockout || {};
+    const stArr = Array.isArray(ko[stageId]) ? [...ko[stageId]] : [];
+    const g = stArr[idx];
+    if (g && (g.homeScore != null || g.awayScore != null || g.penWinner)) {
+      const s = wcSwappedGuess(g);
+      if (hc && ac) { s.homeTeam = hc; s.awayTeam = ac; } // anchor to current orientation
+      stArr[idx] = s;
+      return { ...p, knockout: { ...ko, [stageId]: stArr } };
+    }
+    return p;
+  });
+  wcState.predictions = arr;
+  wcLogResultUpdate((isEn ? 'Repair: flipped all participants\u2019 predictions for ' : 'إصلاح: عُكست توقعات جميع المشاركين للمباراة ') + label);
+  try {
+    await WC_PRED_DOC.set({ value: arr, updatedAt: Date.now() });
+  } catch (e) {
+    console.error('[WC] swap predictions save error:', e);
+    alert(isEn ? 'Failed to save. Try again.' : 'تعذّر الحفظ. حاول مرة أخرى.');
+    return;
+  }
+  wcState.draft = null; // rebuild any open draft from the repaired data
+  wcRender();
+}
+window.wcAdminSwapMatchPredictions = wcAdminSwapMatchPredictions;
+
+async function wcAdminStampStagePredictions(stageId) {
+  if (!(typeof state !== 'undefined' && state.isAdmin)) return;
+  const isEn = (CURRENT_LANG === 'en');
+  const stage = WC_STAGES.find(s => s.id === stageId);
+  const stageName = stage ? t('wc.stage.' + stage.id) : stageId;
+  const msg = isEn
+    ? `Lock in every participant's ${stageName} predictions exactly as they read against the CURRENT matchups?\n\nDo this only AFTER flipping any matches that were showing reversed — from then on, matchup edits can never flip anyone's prediction again.`
+    : `تثبيت توقعات جميع المشاركين لدور «${stageName}» كما تظهر الآن مقابل المواجهات الحالية؟\n\nنفّذ هذا فقط بعد عكس المباريات التي كانت ظاهرة بالمقلوب — بعدها لن يتأثر أي توقع بتعديل المواجهات مستقبلاً.`;
+  if (!confirm(msg)) return;
+  const matches = (wcState.results.knockout && wcState.results.knockout[stageId]) || [];
+  let stamped = 0;
+  const arr = (wcState.predictions || []).map(p => {
+    const ko = p.knockout || {};
+    const src = Array.isArray(ko[stageId]) ? ko[stageId] : [];
+    if (!src.length) return p;
+    let changed = false;
+    const stArr = src.map((g, i) => {
+      if (!g || (g.homeScore == null && g.awayScore == null && !g.penWinner)) return g;
+      const h = wcKoResolvedTeamCode(stageId, i, 'home', matches[i]);
+      const a = wcKoResolvedTeamCode(stageId, i, 'away', matches[i]);
+      if (!h || !a) return g;
+      if (g.homeTeam === h && g.awayTeam === a) return g; // already anchored
+      changed = true; stamped++;
+      return { ...g, homeTeam: h, awayTeam: a };
+    });
+    return changed ? { ...p, knockout: { ...ko, [stageId]: stArr } } : p;
+  });
+  if (!stamped) {
+    alert(isEn ? 'All predictions in this round are already locked to the current matchups.' : 'جميع توقعات هذا الدور مثبَّتة مسبقاً على المواجهات الحالية.');
+    return;
+  }
+  wcState.predictions = arr;
+  wcLogResultUpdate((isEn ? 'Repair: locked ' : 'إصلاح: تم تثبيت ') + stamped + (isEn ? ` ${stageName} predictions to the current matchups` : ` توقعاً في دور «${stageName}» على المواجهات الحالية`));
+  try {
+    await WC_PRED_DOC.set({ value: arr, updatedAt: Date.now() });
+  } catch (e) {
+    console.error('[WC] stamp predictions save error:', e);
+    alert(isEn ? 'Failed to save. Try again.' : 'تعذّر الحفظ. حاول مرة أخرى.');
+    return;
+  }
+  wcState.draft = null;
+  wcRender();
+}
+window.wcAdminStampStagePredictions = wcAdminStampStagePredictions;
+
+function wcSetFixStage(stageId) {
+  wcState.fixStage = stageId;
+  wcRender();
+}
+window.wcSetFixStage = wcSetFixStage;
+
+// Renders the repair panel inside the Admin tab: per-match raw crowd split
+// (computed from the RAW stored numbers, labelled with the current teams —
+// a lopsided or implausible split is the tell-tale sign of a flipped match)
+// plus the one-click "flip everyone" button, and a round-level "lock in".
+function wcRenderAdminFixTool() {
+  const isEn = (CURRENT_LANG === 'en');
+  const sid = wcState.fixStage || 'r16';
+  const stages = WC_STAGES.filter(s => s.id !== 'groups');
+  const tabs = stages.map(s => `
+    <button class="wc-gate-btn ${sid === s.id ? 'active open' : ''}" onclick="wcSetFixStage('${s.id}')">${s.icon} ${t('wc.stage.' + s.id)}</button>`).join('');
+  const matches = (wcState.results.knockout && wcState.results.knockout[sid]) || [];
+  const rows = matches.map((m, i) => {
+    const hc = wcKoResolvedTeamCode(sid, i, 'home', m);
+    const ac = wcKoResolvedTeamCode(sid, i, 'away', m);
+    const home = hc ? WC_TEAM_MAP[hc] : null;
+    const away = ac ? WC_TEAM_MAP[ac] : null;
+    if (!home || !away) return '';
+    // Raw stored split (deliberately NOT alignment-corrected): what the
+    // numbers say as stored, against the teams as displayed now.
+    let h = 0, d = 0, a = 0;
+    (wcState.predictions || []).forEach(p => {
+      const g = p.knockout && p.knockout[sid] && p.knockout[sid][i];
+      if (!g || g.homeScore == null || g.awayScore == null) return;
+      if (g.homeScore > g.awayScore) h++;
+      else if (g.homeScore < g.awayScore) a++;
+      else d++;
+    });
+    const total = h + d + a;
+    const official = (m.homeScore != null && m.awayScore != null)
+      ? ` · <span style="color:var(--green-dark);font-weight:600">${isEn ? 'Official' : 'الرسمي'}: ${m.homeScore} − ${m.awayScore}</span>` : '';
+    const split = total
+      ? `${isEn ? 'stored picks' : 'التوقعات المخزّنة'}: <strong>${h}</strong> ${wcEsc(home.name)} · <strong>${d}</strong> ${isEn ? 'draw' : 'تعادل'} · <strong>${a}</strong> ${wcEsc(away.name)}`
+      : (isEn ? 'no saved predictions' : 'لا توجد توقعات محفوظة');
+    return `
+      <div class="wc-gate-row" style="align-items:center">
+        <div class="wc-gate-text" style="flex:1;min-width:0">
+          <div class="wc-gate-name">${i + 1}. ${wcFlagImg(home.code, 14)} ${wcEsc(home.name)} × ${wcEsc(away.name)} ${wcFlagImg(away.code, 14)}${official}</div>
+          <div class="wc-gate-status" style="font-size:11.5px">${split}</div>
+        </div>
+        <button class="wc-gate-btn closed" ${total ? '' : 'disabled style="opacity:.45;cursor:not-allowed"'}
+                onclick="wcAdminSwapMatchPredictions('${sid}', ${i})">
+          🔁 ${isEn ? 'Flip everyone' : 'عكس توقعات الجميع'}
+        </button>
+      </div>`;
+  }).join('');
+  return `
+    <div class="wc-admin-section">
+      <div class="wc-admin-section-title">🛠 ${isEn ? 'Prediction repair (home ↔ away)' : 'إصلاح التوقعات (مضيف ↔ ضيف)'}</div>
+      <div style="font-size:12px;color:var(--text-mute);margin-bottom:12px;line-height:1.7">
+        ${isEn
+          ? 'Predictions are stored as bare numbers per match slot. If a matchup\u2019s home/away order was corrected after participants had already predicted, their saved scores now read reversed (e.g. a \u201cBrazil 2\u20130\u201d shows as \u201cNorway 2\u20130\u201d). Use <strong>Flip everyone</strong> on each affected match to swap every participant\u2019s two numbers at once (click again to undo), then press <strong>Lock in</strong> so future matchup edits can never flip predictions again. The \u201cstored picks\u201d split helps you spot flipped matches — an implausible majority is the tell.'
+          : 'التوقعات مخزَّنة كأرقام فقط حسب خانة المباراة. إذا صُحِّح ترتيب (المضيف/الضيف) لمواجهة بعد أن أدخل المشاركون توقعاتهم، تظهر أرقامهم المحفوظة معكوسة (مثلاً «البرازيل 2−0» تظهر «النرويج 2−0»). اضغط <strong>عكس توقعات الجميع</strong> على كل مباراة متأثرة لتبديل رقمَي كل مشارك دفعة واحدة (الضغط مرة أخرى يتراجع)، ثم اضغط <strong>تثبيت</strong> حتى لا تتأثر التوقعات بأي تعديل مستقبلي على المواجهات. توزيع «التوقعات المخزّنة» يساعدك على اكتشاف المباريات المعكوسة — الأغلبية غير المنطقية هي العلامة.'}
+      </div>
+      <div class="wc-gate-modes" style="flex-wrap:wrap;margin-bottom:12px">${tabs}</div>
+      <div class="wc-gates-list">
+        ${rows || `<div class="wc-gs-hint">${isEn ? 'No matchups defined for this round yet.' : 'لم تُحدَّد مواجهات هذا الدور بعد.'}</div>`}
+      </div>
+      <button class="wc-gs-seed-btn" style="margin-top:12px" onclick="wcAdminStampStagePredictions('${sid}')">
+        📌 ${isEn ? 'Lock in this round\u2019s predictions as displayed now' : 'تثبيت توقعات هذا الدور كما تظهر الآن'}
+      </button>
+    </div>`;
+}
+
 // Admin-only: manually open/close a stage, or revert to auto (time-based)
 async function wcSetStageOverride(stageId, mode) {
   if (!(typeof state !== 'undefined' && state.isAdmin)) return;
@@ -12358,7 +12555,7 @@ function wcViewParticipant(participantId) {
 
     const rows = matchups.length
       ? matchups.map((m, i) => {
-          const g = guesses[i] || {};
+          const g = wcKoEffectiveGuess(stageId, i, guesses) || {};
           const home = WC_TEAM_MAP[wcKoResolvedTeamCode(stageId, i, 'home', m)] || null;
           const away = WC_TEAM_MAP[wcKoResolvedTeamCode(stageId, i, 'away', m)] || null;
           const hasGuess  = g.homeScore != null && g.awayScore != null;
@@ -12494,6 +12691,54 @@ function wcRenderPensRow(scope, stageId, idx, home, away, draftOrActual, readOnl
 // Points a given guess would earn for ONE knockout match, against the
 // official result (if it's in and unambiguous). Returns 0 when nothing
 // would be earned yet (no official result, no guess, incomplete guess).
+// Returns a copy of a knockout guess with its home/away sides swapped
+// (scores, penalty-shootout winner, and team stamps alike).
+function wcSwappedGuess(g) {
+  if (!g) return g;
+  const s = { ...g, homeScore: g.awayScore ?? null, awayScore: g.homeScore ?? null };
+  if (g.penWinner === 'home') s.penWinner = 'away';
+  else if (g.penWinner === 'away') s.penWinner = 'home';
+  if (g.homeTeam != null || g.awayTeam != null) { s.homeTeam = g.awayTeam || null; s.awayTeam = g.homeTeam || null; }
+  return s;
+}
+
+// ── Prediction/matchup alignment ─────────────────────────────────
+// Knockout guesses are stored by array index only; if the admin later
+// corrects a slot's matchup (or flips its home/away order), the stored
+// numbers silently end up attached to the wrong teams. To make guesses
+// immune to that, every save now stamps the guess with the team codes
+// (`homeTeam`/`awayTeam`) it was made FOR. This resolver returns the
+// guess that truly belongs to slot `idx` as it is matched up RIGHT NOW:
+//   1. stamped guess at idx matching this slot's teams → as-is
+//   2. stamped guess at idx matching in REVERSE order  → swapped copy
+//   3. stamped guess elsewhere in the round whose teams match this slot
+//      (either order) → relocated (and swapped if reversed)
+//   4. legacy unstamped guess → taken at face value (index-based)
+//   5. stamped guess whose teams play a different slot → not this
+//      slot's pick → null
+function wcKoEffectiveGuess(stageId, idx, guesses) {
+  const arr = Array.isArray(guesses) ? guesses : [];
+  const g = arr[idx];
+  const matches = (wcState.results.knockout && wcState.results.knockout[stageId]) || [];
+  const m = matches[idx];
+  const h = wcKoResolvedTeamCode(stageId, idx, 'home', m);
+  const a = wcKoResolvedTeamCode(stageId, idx, 'away', m);
+  if (!h || !a) return g || null;               // slot teams unknown — nothing to align against
+  if (g && g.homeTeam && g.awayTeam) {
+    if (g.homeTeam === h && g.awayTeam === a) return g;
+    if (g.homeTeam === a && g.awayTeam === h) return wcSwappedGuess(g);
+  }
+  for (let i = 0; i < arr.length; i++) {
+    if (i === idx) continue;
+    const c = arr[i];
+    if (!c || !c.homeTeam || !c.awayTeam) continue;
+    if (c.homeTeam === h && c.awayTeam === a) return c;
+    if (c.homeTeam === a && c.awayTeam === h) return wcSwappedGuess(c);
+  }
+  if (g && g.homeTeam && g.awayTeam) return null; // stamped for other teams — belongs to another slot
+  return g || null;                               // legacy unstamped — face value
+}
+
 function wcKoMatchPickPoints(stageId, idx, guess) {
   const actuals = (wcState.results.knockout && wcState.results.knockout[stageId]) || [];
   const a = actuals[idx];
@@ -12518,7 +12763,7 @@ function wcScoreKO(stageId, pred) {
   const actuals = (wcState.results.knockout && wcState.results.knockout[stageId]) || [];
   const guesses = (pred.knockout && pred.knockout[stageId]) || [];
   actuals.forEach((a, i) => {
-    pts += wcKoMatchPickPoints(stageId, i, guesses[i]);
+    pts += wcKoMatchPickPoints(stageId, i, wcKoEffectiveGuess(stageId, i, guesses));
   });
   return pts;
 }
@@ -12550,7 +12795,7 @@ function wcParticipantMatchStats(pred) {
     const actuals = (wcState.results.knockout && wcState.results.knockout[stageId]) || [];
     const guesses = (pred.knockout && pred.knockout[stageId]) || [];
     actuals.forEach((a, i) => {
-      const g = guesses[i];
+      const g = wcKoEffectiveGuess(stageId, i, guesses);
       if (!a || !g) return;
       if (!wcKoMatchComplete(a)) return;
       if (g.homeScore == null || g.awayScore == null) return;
@@ -12572,14 +12817,29 @@ function wcParticipantMatchStats(pred) {
 // ────────────────────────────────────────────────────────────────
 function wcInitDraft() {
   const mine = wcState.predictions.find(p => p.id === wcEffectiveId());
+  // Align each saved knockout round to the CURRENT matchups (via the team
+  // stamps on each guess) so the form always shows the participant's score
+  // next to the team they actually predicted it for, even if the admin
+  // corrected/reordered a matchup after they saved.
+  const alignKO = (sid) => {
+    const raw = (mine && mine.knockout && mine.knockout[sid]) || [];
+    const matches = (wcState.results.knockout && wcState.results.knockout[sid]) || [];
+    const n = Math.max(raw.length, matches.length);
+    const out = [];
+    for (let i = 0; i < n; i++) {
+      const eff = wcKoEffectiveGuess(sid, i, raw);
+      out[i] = eff ? { ...eff } : {};
+    }
+    return out;
+  };
   wcState.draft = {
     groups: mine ? { ...(mine.groups || {}) } : {},
     knockout: mine ? {
-      r32:   [...(mine.knockout?.r32   || [])],
-      r16:   [...(mine.knockout?.r16   || [])],
-      qf:    [...(mine.knockout?.qf    || [])],
-      sf:    [...(mine.knockout?.sf    || [])],
-      final: [...(mine.knockout?.final || [])],
+      r32:   alignKO('r32'),
+      r16:   alignKO('r16'),
+      qf:    alignKO('qf'),
+      sf:    alignKO('sf'),
+      final: alignKO('final'),
     } : { r32: [], r16: [], qf: [], sf: [], final: [] }
   };
 }
@@ -13197,7 +13457,7 @@ function wcRenderCrowdBreakdown(stageId, idx, home, away, forceOpen) {
   const all = wcState.predictions || [];
   let h = 0, dCount = 0, a = 0;
   all.forEach(p => {
-    const m = p.knockout && p.knockout[stageId] && p.knockout[stageId][idx];
+    const m = wcKoEffectiveGuess(stageId, idx, (p.knockout && p.knockout[stageId]) || []);
     if (!m || m.homeScore == null || m.awayScore == null) return;
     if (m.homeScore > m.awayScore) h++;
     else if (m.homeScore < m.awayScore) a++;
@@ -13750,7 +14010,7 @@ function wcExportCompetitionData() {
       const guesses = (p.knockout && p.knockout[stage.id]) || [];
       actuals.forEach((a, i) => {
         if (!a || (!a.home && !a.away)) return; // matchup not decided yet
-        const g = guesses[i] || {};
+        const g = wcKoEffectiveGuess(stage.id, i, guesses) || {};
         const home = a.home ? teamName(a.home) : '';
         const away = a.away ? teamName(a.away) : '';
         const predicted = (g.homeScore != null && g.awayScore != null) ? `${g.homeScore} - ${g.awayScore}` : '';
@@ -13837,6 +14097,8 @@ function wcRenderAdmin() {
     </div>
 
     ${wcRenderAdminParticipantsProgress()}
+
+    ${wcRenderAdminFixTool()}
 
     <div class="wc-admin-section">
       <div class="wc-admin-section-title">${t('wc.admin.gates.title')}</div>
@@ -14992,7 +15254,7 @@ function wcCountGoldenInStage(stageId, pred) {
   let count = 0;
   actuals.forEach((a, i) => {
     if (!wcKoMatchComplete(a)) return;
-    const g = guesses[i];
+    const g = wcKoEffectiveGuess(stageId, i, guesses);
     if (!g || g.homeScore == null || g.awayScore == null) return;
     if (g.homeScore !== a.homeScore || g.awayScore !== a.awayScore) return;
     // When tied, also require matching penalty-shootout winner for a golden.
