@@ -6385,7 +6385,7 @@ const I18N = {
     'wc.gs.pts':               'نقاط',
     'wc.gs.pending':           '— لم تُلعب مباريات بعد —',
     'wc.gs.loadSeed':          'تحميل النتائج الحالية (حتى 26 يونيو)',
-    'wc.ko.loadSeed':          'تحديث نتائج دور الـ32 كاملةً + مواجهات دور الـ16 (حتى 4 يوليو)',
+    'wc.ko.loadSeed':          'تحديث النتائج: دور الـ32 كاملاً + دور الـ16 مواجهات وأوقات ونتائج (حتى 5 يوليو)',
     'wc.admin.ko':             '— مواجهات ونتائج',
     'wc.admin.matches':       'مباراة',
     'wc.admin.selectTeam':    '— اختر منتخب —',
@@ -6696,7 +6696,7 @@ const I18N = {
     'wc.gs.pts':               'Pts',
     'wc.gs.pending':           '— No matches played yet —',
     'wc.gs.loadSeed':          'Load current results (as of June 26)',
-    'wc.ko.loadSeed':          'Update complete Round-of-32 results + R16 matchups (as of July 4)',
+    'wc.ko.loadSeed':          'Update results: full R32 + R16 matchups, kickoffs & played results (as of July 5)',
     'wc.admin.ko':            '— Matchups and results',
     'wc.admin.matches':       'matches',
     'wc.admin.selectTeam':    '— Select a team —',
@@ -11906,6 +11906,25 @@ function wcMaybeRender(source) {
   wcRender();
 }
 
+// Counts how many actual picks a prediction record (or draft shaped like one)
+// contains: every group qualifier chosen + every knockout match with a full
+// score entered. Used by the wipe-guard in wcSaveMyPrediction below.
+function wcPredictionPickCount(p) {
+  if (!p) return 0;
+  let n = 0;
+  const groups = p.groups || {};
+  Object.keys(groups).forEach(gid => {
+    n += Array.isArray(groups[gid]) ? groups[gid].filter(Boolean).length : 0;
+  });
+  const ko = p.knockout || {};
+  ['r32', 'r16', 'qf', 'sf', 'final'].forEach(sid => {
+    (ko[sid] || []).forEach(g => {
+      if (g && g.homeScore != null && g.awayScore != null) n++;
+    });
+  });
+  return n;
+}
+
 async function wcSaveMyPrediction() {
   const targetId = wcEffectiveId();
   const targetName = wcEffectiveName();
@@ -11923,6 +11942,24 @@ async function wcSaveMyPrediction() {
       final: [...(wcState.draft.knockout?.final || [])],
     }
   };
+  // ── Wipe guard ──────────────────────────────────────────────────
+  // The save REPLACES the participant's whole record with the current
+  // draft. If the draft is empty (e.g. it was initialised before the
+  // Firestore predictions snapshot arrived, or on a fresh device that
+  // claimed an existing name) while the saved record already contains
+  // picks, writing it through would silently erase all their previous
+  // predictions — this is exactly what happened to one participant.
+  // Block that save, rebuild the draft from the saved record, and tell
+  // the user to try again.
+  const existing = wcState.predictions.find(p => p.id === targetId);
+  if (existing && wcPredictionPickCount(existing) > 0 && wcPredictionPickCount(myPred) === 0) {
+    try { wcInitDraft(); } catch (e) {}
+    alert(CURRENT_LANG === 'en'
+      ? 'Save blocked to protect your data: your saved predictions exist, but the current form is empty and saving it would erase them. Your saved picks have been reloaded — please try again.'
+      : 'تم إيقاف الحفظ حمايةً لبياناتك: لديك توقعات محفوظة مسبقاً بينما النموذج الحالي فارغ، وحفظه سيمسحها بالكامل. أُعيد تحميل توقعاتك المحفوظة — حاول الحفظ مرة أخرى.');
+    try { wcRender(); } catch (e) {}
+    return;
+  }
   const arr = [...wcState.predictions];
   const idx = arr.findIndex(p => p.id === targetId);
   if (idx >= 0) arr[idx] = myPred; else arr.push(myPred);
@@ -12078,20 +12115,31 @@ const WC_SEED_R32_RESULTS_20260704 = {
   15: { home: 'GHA', away: 'COL', homeScore: 0, awayScore: 1 },
 };
 
-// Round-of-16 matchups derived from the completed R32 bracket above, per
-// the official WC_KO_FEED map (r16 slot [home, away] = winners of the two
-// listed R32 array indices). Teams only — no scores, since R16 hasn't
-// kicked off yet. Consistent with the live Admin tab (e.g. Canada already
-// appears as the home side of R16 slot 2 in the July-4 export).
-const WC_SEED_R16_MATCHUPS_20260704 = {
-  0: { home: 'PAR', away: 'FRA' },   // W(r32 idx2) × W(idx5)
-  1: { home: 'CAN', away: 'MAR' },   // W(idx0)     × W(idx3)
-  2: { home: 'BRA', away: 'NOR' },   // W(idx1)     × W(idx4)
-  3: { home: 'MEX', away: 'ENG' },   // W(idx6)     × W(idx7)
-  4: { home: 'POR', away: 'ESP' },   // W(idx11)    × W(idx10)
-  5: { home: 'USA', away: 'BEL' },   // W(idx9)     × W(idx8)
-  6: { home: 'ARG', away: 'EGY' },   // W(idx14)    × W(idx13)
-  7: { home: 'SUI', away: 'COL' },   // W(idx12)    × W(idx15)
+// Round-of-16 matchups derived from the completed R32 bracket, per the
+// official WC_KO_FEED map (r16 slot [home, away] = winners of the two listed
+// R32 array indices), in ascending official order M89→M96. Verified against
+// FIFA.com / Sky Sports as of July 5, 2026. Includes each match's official
+// kickoff time (stored as UTC ISO, same format the admin input saves), and
+// final scores for the two matches already played:
+//   M89 Paraguay 0-1 France (Philadelphia, July 4)
+//   M90 Canada 0-3 Morocco (Houston, July 4)
+const WC_SEED_R16_20260705 = {
+  // M89 — Paraguay 0-1 France — PLAYED (kickoff 21:00 UTC = 1:00 am Muscat)
+  0: { home: 'PAR', away: 'FRA', homeScore: 0, awayScore: 1, kickoffAt: '2026-07-04T21:00:00.000Z' },
+  // M90 — Canada 0-3 Morocco — PLAYED (kickoff 17:00 UTC = 9:00 pm Muscat)
+  1: { home: 'CAN', away: 'MAR', homeScore: 0, awayScore: 3, kickoffAt: '2026-07-04T17:00:00.000Z' },
+  // M91 — Brazil × Norway — July 5, 20:00 UTC (July 6, 12:00 am Muscat)
+  2: { home: 'BRA', away: 'NOR', kickoffAt: '2026-07-05T20:00:00.000Z' },
+  // M92 — Mexico × England — July 6, 00:00 UTC (July 6, 4:00 am Muscat)
+  3: { home: 'MEX', away: 'ENG', kickoffAt: '2026-07-06T00:00:00.000Z' },
+  // M93 — Portugal × Spain — July 6, 19:00 UTC (July 6, 11:00 pm Muscat)
+  4: { home: 'POR', away: 'ESP', kickoffAt: '2026-07-06T19:00:00.000Z' },
+  // M94 — USA × Belgium — July 7, 00:00 UTC (July 7, 4:00 am Muscat)
+  5: { home: 'USA', away: 'BEL', kickoffAt: '2026-07-07T00:00:00.000Z' },
+  // M95 — Argentina × Egypt — July 7, 16:00 UTC (July 7, 8:00 pm Muscat)
+  6: { home: 'ARG', away: 'EGY', kickoffAt: '2026-07-07T16:00:00.000Z' },
+  // M96 — Switzerland × Colombia — July 7, 20:00 UTC (July 8, 12:00 am Muscat)
+  7: { home: 'SUI', away: 'COL', kickoffAt: '2026-07-07T20:00:00.000Z' },
 };
 
 // Admin-only: one-click load of the verified Round-of-32 results above into
@@ -12100,8 +12148,8 @@ const WC_SEED_R16_MATCHUPS_20260704 = {
 async function wcLoadSeedKnockoutResults() {
   if (!(typeof state !== 'undefined' && state.isAdmin)) return;
   const msg = (CURRENT_LANG === 'en')
-    ? 'Load the complete verified Round-of-32 results (all 16 matches, as of July 4, 2026) and fill in the resulting Round-of-16 matchups? This will overwrite any matchups/scores already entered for these matches.'
-    : 'تحميل نتائج دور الـ32 الموثَّقة كاملةً (جميع المباريات الـ16 — حتى 4 يوليو 2026) وتعبئة مواجهات دور الـ16 الناتجة عنها؟ سيتم استبدال أي مواجهات أو نتائج مُدخَلة حالياً لهذه المباريات.';
+    ? 'Load the complete verified Round-of-32 results (all 16 matches) plus the Round-of-16 matchups with official kickoff times and the results of the two R16 matches already played (Paraguay 0-1 France, Canada 0-3 Morocco — as of July 5, 2026)? This will overwrite any matchups/scores already entered for these matches.'
+    : 'تحميل نتائج دور الـ32 الموثَّقة كاملةً (16 مباراة) + مواجهات دور الـ16 مع أوقات الانطلاق الرسمية ونتيجتي المباراتين المنتهيتين (باراغواي 0-1 فرنسا، كندا 0-3 المغرب) — حتى 5 يوليو 2026؟ سيتم استبدال أي مواجهات أو نتائج مُدخَلة حالياً لهذه المباريات.';
   if (!confirm(msg)) return;
   if (!wcState.results.knockout) wcState.results.knockout = {};
   if (!Array.isArray(wcState.results.knockout.r32)) wcState.results.knockout.r32 = [];
@@ -12115,12 +12163,12 @@ async function wcLoadSeedKnockoutResults() {
   // its matchups (teams only) so the admin doesn't have to enter them by hand.
   if (!Array.isArray(wcState.results.knockout.r16)) wcState.results.knockout.r16 = [];
   const r16 = wcState.results.knockout.r16;
-  Object.keys(WC_SEED_R16_MATCHUPS_20260704).forEach(k => {
+  Object.keys(WC_SEED_R16_20260705).forEach(k => {
     const idx = Number(k);
     while (r16.length <= idx) r16.push({});
-    r16[idx] = { ...r16[idx], ...JSON.parse(JSON.stringify(WC_SEED_R16_MATCHUPS_20260704[idx])) };
+    r16[idx] = { ...r16[idx], ...JSON.parse(JSON.stringify(WC_SEED_R16_20260705[idx])) };
   });
-  wcLogResultUpdate(CURRENT_LANG === 'en' ? 'Loaded complete official Round-of-32 results + Round-of-16 matchups' : 'تحديث نتائج دور الـ32 الرسمية كاملةً + مواجهات دور الـ16');
+  wcLogResultUpdate(CURRENT_LANG === 'en' ? 'Loaded official results: full Round-of-32 + Round-of-16 matchups, kickoff times & first two results' : 'تحديث رسمي: دور الـ32 كاملاً + مواجهات دور الـ16 وأوقاتها ونتيجتا أول مباراتين');
   try {
     await wcSaveResults();
   } catch (e) {
