@@ -13996,10 +13996,37 @@ function wcRenderAdminStage(stage) {
     </div>`;
 }
 
+// The set of team codes actually qualified for a knockout stage, derived
+// from the OFFICIAL results of the previous knockout round (penalties-aware
+// winners). Returns null when it can't be determined yet — e.g. for r32
+// (fed by group qualification, not a previous knockout round) or while the
+// previous round's results are still incomplete — in which case the caller
+// falls back to the full team list.
+function wcAdmQualifiedTeams(stageId) {
+  const pos = WC_KO_ORDER.indexOf(stageId);
+  if (pos <= 0) return null; // r32 or unknown stage → full list
+  const prevStage = WC_KO_ORDER[pos - 1];
+  const prevMatches = (wcState.results.knockout && wcState.results.knockout[prevStage]) || [];
+  const codes = [];
+  prevMatches.forEach(m => {
+    const w = wcKoWinnerCode(m);
+    if (w && !codes.includes(w)) codes.push(w);
+  });
+  return codes.length ? codes : null;
+}
+
 function wcAdmTeamSelect(stageId, idx, field, current) {
+  // Restrict the dropdown to teams qualified for this stage whenever that's
+  // knowable from the previous round's official results — much easier to
+  // pick from 16 teams than from all 48. Falls back to the full list when
+  // qualification isn't determined yet, and always keeps the currently
+  // selected team visible even if it's not in the derived set (so an
+  // existing choice is never silently lost).
+  const qualified = wcAdmQualifiedTeams(stageId);
   let opts = '<option value="">'+t('wc.admin.selectTeam')+'</option>';
   WC_GROUPS.forEach(g => {
     g.teams.forEach(tm => {
+      if (qualified && !qualified.includes(tm[0]) && tm[0] !== current) return;
       const sel = tm[0] === current ? ' selected' : '';
       opts += `<option value="${tm[0]}"${sel}>${tm[1]} ${tm[2]} (${g.id})</option>`;
     });
