@@ -3362,9 +3362,32 @@ textarea.form-control { resize: vertical; min-height: 80px; line-height: 1.6; }
   grid-template-columns: 1fr auto 1fr;
   gap: 10px; align-items: center;
 }
+/* توقع صحيح (فائز صحيح) وأيضاً النتيجة المطابقة = أخضر؛ المطابقة تتميز بنجمة */
 .wcv-match.correct { background: var(--green-tint); border-color: var(--green-light); }
-.wcv-match.partial { background: var(--gold-tint); border-color: var(--gold-soft); }
-.wcv-match.wrong { background: #F4E8E2; border-color: #E5C5B0; }
+.wcv-match.partial { background: var(--green-tint); border-color: var(--green-light); }
+/* توقع خاطئ = أحمر واضح */
+.wcv-match.wrong { background: #FBE3DF; border-color: #E39B8A; }
+.wcv-exact-star { margin-inline-end: 4px; }
+/* ─── أقسام قابلة للطي (بطاقة المشارك + الإدارة) ─────────────── */
+details.wcv-collapsible > summary { list-style: none; cursor: pointer; }
+details.wcv-collapsible > summary::-webkit-details-marker { display: none; }
+.wcv-toggle-chip {
+  margin-inline-start: auto; font-size: 11px; font-weight: 600;
+  color: var(--text-mute); background: var(--bg-2);
+  border: 1px solid var(--border-soft); border-radius: 20px;
+  padding: 3px 10px; white-space: nowrap;
+}
+details.wcv-collapsible[open] > summary .wcv-chip-show { display: none; }
+details.wcv-collapsible:not([open]) > summary .wcv-chip-hide { display: none; }
+.wc-adm-collap-head { display: flex; align-items: center; gap: 10px; cursor: pointer; user-select: none; }
+.wc-adm-toggle-btn {
+  margin-inline-start: auto; font-size: 11.5px; font-weight: 700;
+  font-family: inherit; color: var(--text-soft); background: var(--bg-2);
+  border: 1px solid var(--border-soft); border-radius: 20px;
+  padding: 4px 12px; cursor: pointer; white-space: nowrap;
+}
+.wc-adm-toggle-btn:hover { background: var(--card-2); }
+.wc-adm-collapsed-hint { font-size: 11.5px; color: var(--text-mute); padding: 4px 2px 0; }
 .wcv-match-team {
   display: flex; align-items: center; gap: 6px;
   font-size: 13px; color: var(--text);
@@ -11604,6 +11627,7 @@ const wcState = {
   koView: 'list',          // bracket | list (knockout display mode) — list is the default view
   activeRound: null,       // groups | r32 | r16 | qf | sf | final — which single round the predict tab shows; null = not yet decided
   stageDetailsOpen: {},    // { [stageId]: true } — closed-stage standings/picks panel, collapsed by default
+  admStageOpen: {},        // { [stageId]: bool } — admin results sections; default: only current round visible
   prevTotals: null,        // { [playerId]: prevTotalScore }  for + animation
   countdownTimer: null,    // setInterval handle for big countdown
   draft: null,
@@ -12306,11 +12330,16 @@ function wcViewParticipant(participantId) {
       </div>`;
   }).join('');
 
+  // Collapsible sections: only the CURRENT round is expanded; past rounds
+  // (groups, R32, …) are hidden behind a "Show" toggle to keep the card short.
+  const currentRoundId = wcCurrentRoundStageId();
+  const chipHtml = `<span class="wcv-toggle-chip"><span class="wcv-chip-show">👁 ${CURRENT_LANG==='en'?'Show':'إظهار'}</span><span class="wcv-chip-hide">🔼 ${CURRENT_LANG==='en'?'Hide':'إخفاء'}</span></span>`;
+
   html += `
-    <div class="wcv-section">
-      <div class="wcv-section-title">📋 ${t('wc.stage.groups')}<span class="wcv-pts">${pts.groups} ${t('wc.lb.point')}</span></div>
+    <details class="wcv-section wcv-collapsible" ${currentRoundId === 'groups' ? 'open' : ''}>
+      <summary class="wcv-section-title">📋 ${t('wc.stage.groups')}<span class="wcv-pts">${pts.groups} ${t('wc.lb.point')}</span>${chipHtml}</summary>
       <div class="wcv-groups-grid">${groupCards}</div>
-    </div>
+    </details>
   `;
 
   // ── Knockout sections ────────────────────────────────────────
@@ -12348,6 +12377,8 @@ function wcViewParticipant(participantId) {
           const homeHTML = home ? `${home.name}${wcFlagImg(home.code, 14)}` : `<span style="color:var(--text-mute);font-style:italic">${wcEsc(wcKoSlotLabel(stageId, i, 'home') || t('wc.match.tbd'))}</span>`;
           const awayHTML = away ? `${wcFlagImg(away.code, 14)}${away.name}` : `<span style="color:var(--text-mute);font-style:italic">${wcEsc(wcKoSlotLabel(stageId, i, 'away') || t('wc.match.tbd'))}</span>`;
           const predictedScore = hasGuess ? `${g.homeScore} − ${g.awayScore}` : `— − —`;
+          // Exact score (with matching pen winner when tied) earns a star badge
+          const exactStar = cls === 'correct' ? '<span class="wcv-exact-star" title="' + (CURRENT_LANG==='en'?'Exact score':'نتيجة مطابقة') + '">⭐</span>' : '';
           // Append a pens annotation when relevant
           const actualPenTag = (hasActual && wcKoIsTied(m) && m.penWinner)
             ? ` <span class="wc-pens-tag">${wcEsc(t('wc.ko.pens.tag'))}: ${wcEsc(m.penWinner==='home' ? (home?.name||'') : (away?.name||''))}</span>` : '';
@@ -12359,7 +12390,7 @@ function wcViewParticipant(participantId) {
           return `
             <div class="wcv-match ${cls}">
               <div class="wcv-match-team home">${homeHTML}</div>
-              <div class="wcv-score">${predictedScore}</div>
+              <div class="wcv-score">${exactStar}${predictedScore}</div>
               <div class="wcv-match-team away">${awayHTML}</div>
               ${actualMeta ? `<div class="wcv-match-meta"><span>${predictedLbl}: ${predictedScore}${predPenTag}</span>${actualMeta}</div>` : ''}
             </div>`;
@@ -12367,10 +12398,10 @@ function wcViewParticipant(participantId) {
       : `<div class="wcv-empty">${CURRENT_LANG==='en'?'No matchups defined yet':'لم تُعلَن المواجهات بعد'}</div>`;
 
     html += `
-      <div class="wcv-section">
-        <div class="wcv-section-title">${stage.icon} ${t('wc.stage.'+stageId)}<span class="wcv-pts">${pts[stageId]} ${t('wc.lb.point')}</span></div>
+      <details class="wcv-section wcv-collapsible" ${stageId === currentRoundId ? 'open' : ''}>
+        <summary class="wcv-section-title">${stage.icon} ${t('wc.stage.'+stageId)}<span class="wcv-pts">${pts[stageId]} ${t('wc.lb.point')}</span>${chipHtml}</summary>
         ${rows}
-      </div>
+      </details>
     `;
   });
 
@@ -13845,12 +13876,18 @@ function wcRenderAdmin() {
     </div>
 
     <div class="wc-admin-section">
-      <div class="wc-admin-section-title">${t('wc.admin.groups')}</div>
+      <div class="wc-admin-section-title wc-adm-collap-head" role="button" tabindex="0"
+           onclick="wcToggleAdminStage('groups')"
+           onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();wcToggleAdminStage('groups');}">
+        <span>${t('wc.admin.groups')}</span>
+        <span class="wc-adm-toggle-btn">${wcAdmStageIsOpen('groups') ? (isEn ? '🔼 Hide' : '🔼 إخفاء') : (isEn ? '👁 Show' : '👁 إظهار')}</span>
+      </div>
+      ${wcAdmStageIsOpen('groups') ? `
       <div class="wc-gs-hint">${t('wc.gs.hint')}</div>
       <button class="wc-gs-seed-btn" onclick="wcLoadSeedGroupResults()">📥 ${t('wc.gs.loadSeed')}</button>
       <div class="wc-groups-grid wc-gs-grid">
         ${WC_GROUPS.map(g => wcRenderGroupStandingsAdmin(g)).join('')}
-      </div>
+      </div>` : `<div class="wc-adm-collapsed-hint">${isEn ? 'Section hidden — press "Show" to edit group standings.' : 'القسم مخفي — اضغط «إظهار» لتعديل ترتيب المجموعات.'}</div>`}
     </div>
 
     ${WC_STAGES.filter(s => s.id !== 'groups').map(s => wcRenderAdminStage(s)).join('')}
@@ -13957,17 +13994,34 @@ function wcRenderGroupStandingsAdmin(g) {
     </div>`;
 }
 
+// Admin results sections are collapsed by default except the CURRENT round,
+// so the admin lands directly on what needs entering. Explicit toggles are
+// remembered for the session in wcState.admStageOpen.
+function wcAdmStageIsOpen(stageId) {
+  if (Object.prototype.hasOwnProperty.call(wcState.admStageOpen, stageId)) {
+    return !!wcState.admStageOpen[stageId];
+  }
+  return stageId === wcCurrentRoundStageId();
+}
+function wcToggleAdminStage(stageId) {
+  wcState.admStageOpen[stageId] = !wcAdmStageIsOpen(stageId);
+  wcRender();
+}
+window.wcToggleAdminStage = wcToggleAdminStage;
+
 function wcRenderAdminStage(stage) {
   const arr = (wcState.results.knockout && wcState.results.knockout[stage.id]) || [];
   while (arr.length < stage.matchCount) arr.push({});
 
-  const kickoffLabel = (CURRENT_LANG === 'en') ? 'Kickoff time' : 'وقت انطلاق المباراة';
-  const startedLabel = (CURRENT_LANG === 'en') ? 'Started — prediction locked' : 'انطلقت — التوقع مقفل';
-  const notStartedLabel = (CURRENT_LANG === 'en') ? 'Not started yet' : 'لم تنطلق بعد';
+  const isEn = (CURRENT_LANG === 'en');
+  const kickoffLabel = isEn ? 'Kickoff time' : 'وقت انطلاق المباراة';
+  const startedLabel = isEn ? 'Started — prediction locked' : 'انطلقت — التوقع مقفل';
+  const notStartedLabel = isEn ? 'Not started yet' : 'لم تنطلق بعد';
+  const open = wcAdmStageIsOpen(stage.id);
+  const toggleLbl = open ? (isEn ? '🔼 Hide' : '🔼 إخفاء') : (isEn ? '👁 Show' : '👁 إظهار');
+  const collapsedHint = isEn ? 'Section hidden — press "Show" to enter this round\'s results.' : 'القسم مخفي — اضغط «إظهار» لإدخال نتائج هذا الدور.';
 
-  return `
-    <div class="wc-admin-section">
-      <div class="wc-admin-section-title">${stage.icon} ${t('wc.stage.'+stage.id)} ${t('wc.admin.ko')} (${stage.matchCount} ${t('wc.admin.matches')})</div>
+  const body = `
       ${stage.id === 'r32' ? `<button class="wc-gs-seed-btn" onclick="wcLoadSeedKnockoutResults()">📥 ${t('wc.ko.loadSeed')}</button>` : ''}
       ${Array.from({length: stage.matchCount}, (_, i) => {
         const m = arr[i] || {};
@@ -13992,7 +14046,17 @@ function wcRenderAdminStage(stage) {
             </div>
             ${wcRenderPensRow('admin', stage.id, i, home, away, m, false)}
           </div>`;
-      }).join('')}
+      }).join('')}`;
+
+  return `
+    <div class="wc-admin-section">
+      <div class="wc-admin-section-title wc-adm-collap-head" role="button" tabindex="0"
+           onclick="wcToggleAdminStage('${stage.id}')"
+           onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();wcToggleAdminStage('${stage.id}');}">
+        <span>${stage.icon} ${t('wc.stage.'+stage.id)} ${t('wc.admin.ko')} (${stage.matchCount} ${t('wc.admin.matches')})</span>
+        <span class="wc-adm-toggle-btn">${toggleLbl}</span>
+      </div>
+      ${open ? body : `<div class="wc-adm-collapsed-hint">${collapsedHint}</div>`}
     </div>`;
 }
 
