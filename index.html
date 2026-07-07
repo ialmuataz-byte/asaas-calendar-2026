@@ -5527,6 +5527,49 @@ html[lang="en"] .wc-podium-spot.me::after { content: "YOU"; }
 .wc-crowd-legend .dot.draw { background: var(--gold); }
 .wc-crowd-legend .dot.away { background: var(--clay); }
 
+/* Past-predictions modal — one card per completed match of the round,
+   showing the crowd split with BOTH counts and percentages */
+.wc-pastpred-card {
+  background: var(--bg-2);
+  border: 1px solid var(--border-soft);
+  border-radius: 12px;
+  padding: 12px 14px;
+  margin-bottom: 12px;
+}
+.wc-pastpred-head {
+  display: flex; align-items: center; justify-content: center; gap: 8px;
+  flex-wrap: wrap;
+  font-size: 13.5px; font-weight: 800; color: var(--text);
+  margin-bottom: 4px;
+}
+.wc-pastpred-head .wc-pastpred-side { display: inline-flex; align-items: center; gap: 6px; }
+.wc-pastpred-status {
+  text-align: center; font-size: 11px; font-weight: 600;
+  color: var(--text-mute); margin-bottom: 8px;
+}
+.wc-pastpred-status.final { color: var(--green-dark); }
+.wc-pastpred-rows { display: flex; flex-direction: column; gap: 5px; margin-top: 8px; }
+.wc-pastpred-row {
+  display: flex; align-items: center; justify-content: space-between; gap: 10px;
+  font-size: 11.5px; color: var(--text-soft);
+}
+.wc-pastpred-row .lbl { display: inline-flex; align-items: center; gap: 6px; font-weight: 600; }
+.wc-pastpred-row .dot { width: 8px; height: 8px; border-radius: 50%; display: inline-block; flex-shrink: 0; }
+.wc-pastpred-row .dot.home { background: var(--green); }
+.wc-pastpred-row .dot.draw { background: var(--gold); }
+.wc-pastpred-row .dot.away { background: var(--clay); }
+.wc-pastpred-row .nums { display: inline-flex; align-items: baseline; gap: 6px; white-space: nowrap; }
+.wc-pastpred-row .nums b { font-size: 12.5px; color: var(--text); }
+.wc-pastpred-row .nums .pct { color: var(--text-mute); font-weight: 600; }
+.wc-pastpred-total {
+  text-align: center; font-size: 11px; color: var(--text-mute);
+  margin-top: 8px; font-weight: 600;
+}
+.wc-pastpred-empty {
+  text-align: center; padding: 24px 10px;
+  font-size: 13px; color: var(--text-mute);
+}
+
 /* Last-result strip — shown right under the "next match" countdown */
 .wc-last-result {
   background: var(--card);
@@ -13498,17 +13541,25 @@ function wcRenderKOForm(stage, isGuest) {
 // "توقع الجمهور" — percentage breakdown of how every participant who has
 // SAVED a pick for this match predicted it (home win / draw / away win).
 // Only called once the viewer's own saved guess for this match exists.
-function wcRenderCrowdBreakdown(stageId, idx, home, away, forceOpen) {
+// Tally how the saved predictions split for ONE knockout match:
+// home win / draw / away win, as raw counts. Shared by the inline
+// "توقع الجمهور" strip and the past-predictions modal so the two can
+// never disagree.
+function wcCrowdCounts(stageId, idx) {
   const all = wcState.predictions || [];
-  let h = 0, dCount = 0, a = 0;
+  let h = 0, d = 0, a = 0;
   all.forEach(p => {
     const m = wcKoEffectiveGuess(stageId, idx, (p.knockout && p.knockout[stageId]) || []);
     if (!m || m.homeScore == null || m.awayScore == null) return;
     if (m.homeScore > m.awayScore) h++;
     else if (m.homeScore < m.awayScore) a++;
-    else dCount++;
+    else d++;
   });
-  const total = h + dCount + a;
+  return { h, d, a, total: h + d + a };
+}
+
+function wcRenderCrowdBreakdown(stageId, idx, home, away, forceOpen) {
+  const { h, d: dCount, a, total } = wcCrowdCounts(stageId, idx);
   if (total === 0) return '';
   const pct = n => Math.round(n * 100 / total);
   const isEn = (CURRENT_LANG === 'en');
@@ -13529,9 +13580,9 @@ function wcRenderCrowdBreakdown(stageId, idx, home, away, forceOpen) {
           <div class="wc-crowd-seg away" style="width:${pct(a)}%"></div>
         </div>
         <div class="wc-crowd-legend">
-          <span><i class="dot home"></i> ${pct(h)}% ${homeLbl}</span>
-          <span><i class="dot draw"></i> ${pct(dCount)}% ${drawLbl}</span>
-          <span><i class="dot away"></i> ${pct(a)}% ${awayLbl}</span>
+          <span><i class="dot home"></i> ${pct(h)}% ${homeLbl} (${h})</span>
+          <span><i class="dot draw"></i> ${pct(dCount)}% ${drawLbl} (${dCount})</span>
+          <span><i class="dot away"></i> ${pct(a)}% ${awayLbl} (${a})</span>
         </div>
       </div>
     </details>`;
@@ -14761,25 +14812,83 @@ function wcRenderLastResultStrip() {
     </div>`;
 }
 
-// The strip's button: jump straight to that round's card in the list view
-// AND pop its standings/picks panel open (closed stages keep that
-// collapsed by default — see wcToggleStageDetails), instead of leaving the
-// participant to find and expand it themselves.
+// The strip's button: open a modal listing every already-played match of
+// that same round, each with the crowd's prediction split — shown BOTH as
+// raw counts (how many people picked each outcome) and percentages.
+// Self-contained on purpose: the old behaviour (switch tab + scroll to the
+// stage card) silently did nothing when the card wasn't reachable from the
+// current view, which is exactly the "button doesn't work" report.
 window.wcOpenPastPredictions = function(stageId) {
-  wcState.tab = 'predict';
-  wcState.stageDetailsOpen[stageId] = true;
-  if (stageId !== 'groups' && wcState.koView !== 'list') {
-    wcState.koView = 'list';
-    try { localStorage.setItem('asaas_wc_koView', 'list'); } catch (e) {}
-  }
-  wcRender();
-  requestAnimationFrame(() => requestAnimationFrame(() => {
-    const el = document.getElementById('wcStageCard-' + stageId);
-    if (!el) return;
-    el.scrollIntoView({ behavior: 'smooth', block: 'start' });
-    el.classList.add('wc-stage-card-flash');
-    setTimeout(() => el.classList.remove('wc-stage-card-flash'), 1200);
-  }));
+  const isEn = (CURRENT_LANG === 'en');
+  const stage = WC_STAGES.find(s => s.id === stageId);
+  const matches = (wcState.results.knockout && wcState.results.knockout[stageId]) || [];
+  const predLbl = n => isEn ? `${n} prediction${n === 1 ? '' : 's'}` : (n === 1 ? 'توقع واحد' : (n === 2 ? 'توقعان' : `${n} ${n >= 3 && n <= 10 ? 'توقعات' : 'توقع'}`));
+
+  const cards = [];
+  matches.forEach((m, i) => {
+    if (!m) return;
+    const hasOfficial = (m.homeScore != null && m.awayScore != null);
+    // Predictions stay hidden until a match has kicked off (they're only
+    // locked from that moment) — so "past matches" = kicked-off or decided.
+    if (!hasOfficial && !wcKoMatchKickedOff(m)) return;
+    const home = WC_TEAM_MAP[wcKoResolvedTeamCode(stageId, i, 'home', m)] || null;
+    const away = WC_TEAM_MAP[wcKoResolvedTeamCode(stageId, i, 'away', m)] || null;
+    if (!home || !away) return;
+
+    const { h, d, a, total } = wcCrowdCounts(stageId, i);
+    const pct = n => total ? Math.round(n * 100 / total) : 0;
+
+    const pensNote = (hasOfficial && wcKoIsTied(m) && m.penWinner)
+      ? ` · <span class="wc-pens-tag">${wcEsc(t('wc.ko.pens.tag'))}: ${wcEsc(m.penWinner === 'home' ? home.name : away.name)}</span>`
+      : '';
+    const statusLine = hasOfficial
+      ? `<div class="wc-pastpred-status final">${wcEsc(t('wc.match.official'))}: ${m.homeScore} − ${m.awayScore}${pensNote}</div>`
+      : `<div class="wc-pastpred-status">⏳ ${isEn ? 'Kicked off — awaiting official result' : 'انطلقت المباراة — بانتظار النتيجة الرسمية'}</div>`;
+
+    const body = total === 0
+      ? `<div class="wc-pastpred-empty" style="padding:10px">${isEn ? 'No saved predictions for this match' : 'لا توجد توقعات محفوظة لهذه المباراة'}</div>`
+      : `
+        <div class="wc-crowd-bar">
+          <div class="wc-crowd-seg home" style="width:${pct(h)}%"></div>
+          <div class="wc-crowd-seg draw" style="width:${pct(d)}%"></div>
+          <div class="wc-crowd-seg away" style="width:${pct(a)}%"></div>
+        </div>
+        <div class="wc-pastpred-rows">
+          <div class="wc-pastpred-row">
+            <span class="lbl"><i class="dot home"></i>${isEn ? `${wcEsc(home.name)} win` : `فوز ${wcEsc(home.name)}`}</span>
+            <span class="nums"><b>${h}</b> ${predLbl(h)} <span class="pct">(${pct(h)}%)</span></span>
+          </div>
+          <div class="wc-pastpred-row">
+            <span class="lbl"><i class="dot draw"></i>${isEn ? 'Draw' : 'التعادل'}</span>
+            <span class="nums"><b>${d}</b> ${predLbl(d)} <span class="pct">(${pct(d)}%)</span></span>
+          </div>
+          <div class="wc-pastpred-row">
+            <span class="lbl"><i class="dot away"></i>${isEn ? `${wcEsc(away.name)} win` : `فوز ${wcEsc(away.name)}`}</span>
+            <span class="nums"><b>${a}</b> ${predLbl(a)} <span class="pct">(${pct(a)}%)</span></span>
+          </div>
+        </div>
+        <div class="wc-pastpred-total">👥 ${isEn ? 'Total' : 'المجموع'}: ${predLbl(total)}</div>`;
+
+    cards.push(`
+      <div class="wc-pastpred-card">
+        <div class="wc-pastpred-head">
+          <span class="wc-pastpred-side">${wcFlagImg(home.code, 18)}<span>${wcEsc(home.name)}</span></span>
+          <span>${hasOfficial ? `${m.homeScore} − ${m.awayScore}` : wcEsc(t('wc.countdown.vs'))}</span>
+          <span class="wc-pastpred-side"><span>${wcEsc(away.name)}</span>${wcFlagImg(away.code, 18)}</span>
+        </div>
+        ${statusLine}
+        ${body}
+      </div>`);
+  });
+
+  const stageName = stage ? `${stage.icon} ${t('wc.stage.' + stage.id)}` : '';
+  const titleEl = document.getElementById('wcPredsTitle');
+  if (titleEl) titleEl.innerHTML = `📂 ${isEn ? "Participants' predictions" : 'توقعات المشاركين'} · ${wcEsc(stageName)}`;
+  const bodyEl = document.getElementById('wcPredsBody');
+  if (bodyEl) bodyEl.innerHTML = cards.length
+    ? cards.join('')
+    : `<div class="wc-pastpred-empty">${isEn ? 'No matches have been played in this round yet.' : 'لا توجد مباريات لُعبت في هذا الدور بعد.'}</div>`;
+  document.getElementById('wcPredsModal').classList.add('open');
 };
 
 function wcRenderBigCountdown() {
