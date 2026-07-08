@@ -5097,6 +5097,89 @@ html[lang="en"] .wc-podium-spot.me::after { content: "YOU"; }
 }
 .wc-golden-badge::before { content: "🏅"; font-size: 11px; }
 
+/* ── 🃏 Joker challenge ─────────────────────────────────────────── */
+.wc-joker-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  font-size: 10.5px;
+  font-weight: 700;
+  padding: 1px 7px;
+  border-radius: 99px;
+  margin-inline-start: 6px;
+  vertical-align: middle;
+  letter-spacing: .2px;
+  white-space: nowrap;
+}
+.wc-joker-badge::before { content: "🃏"; font-size: 11px; }
+.wc-joker-badge.gold {
+  background: linear-gradient(135deg, #FFF3C4 0%, #FFE38A 100%);
+  border: 1px solid #E3B94E; color: #7A5A00;
+}
+.wc-joker-badge.silver {
+  background: linear-gradient(135deg, #F2F4F7 0%, #DFE3EA 100%);
+  border: 1px solid #B9C0CC; color: #4A5361;
+}
+.wc-joker-badge.bronze {
+  background: linear-gradient(135deg, #F6E3D3 0%, #EAC7A8 100%);
+  border: 1px solid #C9955F; color: #6E431A;
+}
+.wc-joker-banner {
+  margin: 0 0 14px;
+  padding: 14px 16px 12px;
+  background: linear-gradient(135deg, rgba(49,92,59,.07) 0%, rgba(212,175,55,.10) 100%);
+  border: 1px solid var(--gold-soft, #E3C878);
+  border-radius: 12px;
+}
+.wc-joker-banner-title {
+  font-family: 'Co Headline', 'Tajawal', sans-serif;
+  font-weight: 700;
+  font-size: 14.5px;
+  color: var(--text);
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  margin-bottom: 5px;
+}
+.wc-joker-banner-sub { font-size: 12px; color: var(--text-soft, var(--text)); line-height: 1.7; margin-bottom: 9px; }
+.wc-joker-tiers { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 8px; }
+.wc-joker-tier {
+  flex: 1 1 140px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  background: var(--card, #fff);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 7px 10px;
+  font-size: 11.5px;
+}
+.wc-joker-tier-medal { font-size: 18px; line-height: 1; }
+.wc-joker-tier-name { font-weight: 700; color: var(--text); }
+.wc-joker-tier-desc { color: var(--text-mute); font-size: 10.5px; }
+.wc-joker-tier-pts {
+  margin-inline-start: auto;
+  font-family: 'Co Headline', 'Tajawal', sans-serif;
+  font-weight: 700;
+  font-size: 14px;
+  color: var(--green-dark, #315C3B);
+  white-space: nowrap;
+  font-variant-numeric: tabular-nums;
+}
+.wc-joker-note { font-size: 10.5px; color: var(--text-mute); line-height: 1.7; }
+.wc-joker-status {
+  margin-top: 10px;
+  padding: 8px 12px;
+  border-radius: 10px;
+  font-size: 12px;
+  line-height: 1.7;
+  border: 1px dashed var(--border);
+  background: var(--bg-2, var(--beige));
+  color: var(--text-soft, var(--text));
+}
+.wc-joker-status strong { color: var(--green-dark, #315C3B); }
+.wc-joker-status.out { opacity: .75; }
+
 /* Stage-card achievements bar */
 .wc-stage-achievements {
   display: flex;
@@ -6506,6 +6589,22 @@ const I18N = {
     'wc.golden.label':        'ذهبي',
     'wc.golden.title':        'توقعاتك الذهبية في هذا الدور',
     'wc.golden.tooltip':      'نتيجة مضبوطة 100%',
+    // 🃏 Joker challenge
+    'wc.joker.title':         'تحدّي الجوكر',
+    'wc.joker.banner':        'توقّع الفائزين في كل المباريات المتبقية (ربع النهائي حتى النهائي) واكسب مكافأة ضخمة فوق نقاطك الأساسية:',
+    'wc.joker.gold':          'الجوكر الذهبي',
+    'wc.joker.silver':        'الجوكر الفضي',
+    'wc.joker.bronze':        'الجوكر البرونزي',
+    'wc.joker.gold.desc':     'كل الفائزين صح',
+    'wc.joker.silver.desc':   'خطأ واحد فقط',
+    'wc.joker.bronze.desc':   'خطآن فقط',
+    'wc.joker.note':          'يُحتسب الفائز فقط (النتيجة غير مطلوبة) · تُمنح أعلى فئة تحقّقها مرة واحدة بعد نهاية المونديال · عدم التوقّع يُحسب خطأ.',
+    'wc.joker.earned':        'حصل على',
+    'wc.joker.progress':      'سباق الجوكر',
+    'wc.joker.alive':         'ما زال في السباق نحو',
+    'wc.joker.out':           'خرج من سباق الجوكر',
+    'wc.joker.correctOf':     'إصابات صحيحة',
+    'wc.joker.pts':           'نقطة مكافأة',
 
     'wc.share.title':         'بطاقة ترتيبي',
     'wc.share.download':      '⬇ تحميل الصورة',
@@ -6817,6 +6916,22 @@ const I18N = {
     'wc.golden.label':        'Golden',
     'wc.golden.title':        'Your golden picks in this round',
     'wc.golden.tooltip':      '100% exact score',
+    // 🃏 Joker challenge
+    'wc.joker.title':         'The Joker Challenge',
+    'wc.joker.banner':        'Predict the winners of ALL remaining matches (quarter-finals through the final) and earn a huge bonus on top of your regular points:',
+    'wc.joker.gold':          'Gold Joker',
+    'wc.joker.silver':        'Silver Joker',
+    'wc.joker.bronze':        'Bronze Joker',
+    'wc.joker.gold.desc':     'every winner correct',
+    'wc.joker.silver.desc':   'only one miss',
+    'wc.joker.bronze.desc':   'only two misses',
+    'wc.joker.note':          'Winner only — exact score not required · highest tier achieved is awarded once, after the tournament ends · a missing prediction counts as a miss.',
+    'wc.joker.earned':        'earned the',
+    'wc.joker.progress':      'Joker race',
+    'wc.joker.alive':         'still in the race for the',
+    'wc.joker.out':           'out of the joker race',
+    'wc.joker.correctOf':     'correct picks',
+    'wc.joker.pts':           'bonus points',
 
     'wc.share.title':         'My Ranking Card',
     'wc.share.download':      '⬇ Download',
@@ -11525,6 +11640,30 @@ const WC_SCORING = {
 };
 
 // ────────────────────────────────────────────────────────────────
+// 🃏 THE JOKER CHALLENGE — end-of-tournament bonus
+// ────────────────────────────────────────────────────────────────
+// Across ALL matches of the stages listed below (QF + SF + Final),
+// a participant who predicts the correct WINNER (side only — exact
+// score not required) in enough matches earns a one-time bonus ON TOP
+// of the regular points:
+//   • Gold Joker   — every single winner correct        → +35 pts
+//   • Silver Joker — all correct except ONE match       → +20 pts
+//   • Bronze Joker — all correct except TWO matches     → +10 pts
+// Only the highest tier achieved is awarded (non-cumulative), and the
+// bonus is credited only once ALL the challenge matches are decided
+// (i.e. after the Final), so the leaderboard never shows a premature
+// bonus that could later be revoked. A missing prediction counts as a
+// wrong pick. Tiers MUST stay sorted by `miss` ascending.
+const WC_JOKER = {
+  stages: ['qf', 'sf', 'final'],
+  tiers: [
+    { id: 'gold',   medal: '🥇', miss: 0, pts: 35 },
+    { id: 'silver', medal: '🥈', miss: 1, pts: 20 },
+    { id: 'bronze', medal: '🥉', miss: 2, pts: 10 },
+  ],
+};
+
+// ────────────────────────────────────────────────────────────────
 // 2026 group draw (official, Dec 5, 2025)
 // ────────────────────────────────────────────────────────────────
 const WC_GROUPS = [
@@ -12561,6 +12700,18 @@ function wcViewParticipant(participantId) {
     </div>
   `;
 
+  // ── 🃏 Joker challenge status ─────────────────────────────────
+  const js = wcJokerStatus(pred);
+  if (js.tier) {
+    html += `<div class="wc-joker-status" style="margin:0 0 12px">🎉 ${wcEsc(t('wc.joker.earned'))} <strong>${wcEsc(t('wc.joker.' + js.tier.id))}</strong> ${js.tier.medal} — <strong>+${js.tier.pts}</strong> ${wcEsc(t('wc.joker.pts'))}</div>`;
+  } else if (js.decided > 0) {
+    if (js.bestReachable && !js.allDecided) {
+      html += `<div class="wc-joker-status" style="margin:0 0 12px">🃏 ${wcEsc(t('wc.joker.progress'))}: <strong>${js.correct} / ${js.decided}</strong> ${wcEsc(t('wc.joker.correctOf'))} — ${wcEsc(t('wc.joker.alive'))} <strong>${wcEsc(t('wc.joker.' + js.bestReachable.id))}</strong> ${js.bestReachable.medal}</div>`;
+    } else if (!js.bestReachable) {
+      html += `<div class="wc-joker-status out" style="margin:0 0 12px">🃏 ${wcEsc(t('wc.joker.progress'))}: <strong>${js.correct} / ${js.decided}</strong> ${wcEsc(t('wc.joker.correctOf'))} — ${wcEsc(t('wc.joker.out'))}</div>`;
+    }
+  }
+
   // ── Group stage section ───────────────────────────────────────
   const groupResults = (wcState.results.groups) || {};
   const notFinalLbl = (CURRENT_LANG === 'en') ? '⏳ Live standing — group not finished yet' : '⏳ ترتيب حالي — دور المجموعة لم يُحسم بعد';
@@ -12845,6 +12996,50 @@ function wcScoreKO(stageId, pred) {
   return pts;
 }
 
+// ── 🃏 Joker challenge status ────────────────────────────────────
+// Evaluates a participant's standing in the QF→Final joker challenge.
+// Returns:
+//   total        — total matches in the challenge (from WC_STAGES matchCount)
+//   decided      — how many of those matches have an official final result
+//   correct      — correct-winner picks among the decided matches
+//   wrongSoFar   — decided − correct (misses so far; no pick = miss)
+//   allDecided   — true once every challenge match is finalised
+//   tier         — the earned tier object (gold/silver/bronze) or null;
+//                  only ever non-null when allDecided is true
+//   pts          — bonus points earned (0 until allDecided + tier)
+//   bestReachable— best tier still mathematically reachable (assumes every
+//                  remaining match is predicted correctly), or null if the
+//                  participant is already out of the joker race
+function wcJokerStatus(pred) {
+  const total = WC_JOKER.stages.reduce((n, sid) => {
+    const st = WC_STAGES.find(s => s.id === sid);
+    return n + (st ? st.matchCount : 0);
+  }, 0);
+  let decided = 0, correct = 0;
+  WC_JOKER.stages.forEach(stageId => {
+    const actuals = (wcState.results.knockout && wcState.results.knockout[stageId]) || [];
+    const guesses = (pred && pred.knockout && pred.knockout[stageId]) || [];
+    actuals.forEach((a, i) => {
+      if (!a || !wcKoMatchComplete(a)) return;
+      decided++;
+      const g = wcKoEffectiveGuess(stageId, i, guesses);
+      if (!g || g.homeScore == null || g.awayScore == null) return;
+      const pSide = wcKoWinnerSide(g);
+      if (!pSide) return;
+      if (wcKoWinnerSide(a) === pSide) correct++;
+    });
+  });
+  const wrongSoFar = decided - correct;
+  const allDecided = total > 0 && decided >= total;
+  let tier = null;
+  if (allDecided) {
+    const wrong = total - correct;
+    tier = WC_JOKER.tiers.find(t2 => wrong <= t2.miss) || null;
+  }
+  const bestReachable = WC_JOKER.tiers.find(t2 => wrongSoFar <= t2.miss) || null;
+  return { total, decided, correct, wrongSoFar, allDecided, tier, pts: tier ? tier.pts : 0, bestReachable };
+}
+
 function wcPointsByStage(pred) {
   return {
     groups: wcScoreGroups(pred),
@@ -12853,12 +13048,13 @@ function wcPointsByStage(pred) {
     qf:     wcScoreKO('qf',  pred),
     sf:     wcScoreKO('sf',  pred),
     final:  wcScoreKO('final', pred),
+    joker:  wcJokerStatus(pred).pts,
   };
 }
 
 function wcTotal(pred) {
   const by = wcPointsByStage(pred);
-  return by.groups + by.r32 + by.r16 + by.qf + by.sf + by.final;
+  return by.groups + by.r32 + by.r16 + by.qf + by.sf + by.final + by.joker;
 }
 
 // Counts, across all decided knockout matches, how many times this
@@ -13728,6 +13924,55 @@ function wcRenderLeaderboard() {
   return topTabs + subTabs + wcRenderLeaderboardTable(stage);
 }
 
+// ── 🃏 Joker render helpers ──────────────────────────────────────
+// Small pill shown next to a participant's name once they have EARNED a
+// joker tier (only possible after all challenge matches are decided).
+function wcRenderJokerBadge(pred) {
+  const js = wcJokerStatus(pred);
+  if (!js.tier) return '';
+  const name = t('wc.joker.' + js.tier.id);
+  return `<span class="wc-joker-badge ${js.tier.id}" title="${wcEsc(name)} · +${js.tier.pts} ${wcEsc(t('wc.joker.pts'))}">${js.tier.medal} ${wcEsc(name)}</span>`;
+}
+
+// Explainer banner shown on the overall leaderboard: the three tiers,
+// their bonuses, and (for the registered viewer) their live race status.
+function wcRenderJokerBanner() {
+  const tiersHtml = WC_JOKER.tiers.map(tier => `
+    <div class="wc-joker-tier">
+      <span class="wc-joker-tier-medal">${tier.medal}</span>
+      <span>
+        <div class="wc-joker-tier-name">${wcEsc(t('wc.joker.' + tier.id))}</div>
+        <div class="wc-joker-tier-desc">${wcEsc(t('wc.joker.' + tier.id + '.desc'))}</div>
+      </span>
+      <span class="wc-joker-tier-pts">+${tier.pts}</span>
+    </div>`).join('');
+
+  // Personal race status for the registered viewer
+  let statusHtml = '';
+  const mine = (wcState.predictions || []).find(p => p.id === wcEffectiveId());
+  if (mine) {
+    const js = wcJokerStatus(mine);
+    if (js.tier) {
+      statusHtml = `<div class="wc-joker-status">🎉 <strong>${wcEsc(mine.name)}</strong> — ${wcEsc(t('wc.joker.earned'))} <strong>${wcEsc(t('wc.joker.' + js.tier.id))}</strong> ${js.tier.medal} (+${js.tier.pts} ${wcEsc(t('wc.joker.pts'))})</div>`;
+    } else if (js.decided > 0 || js.allDecided) {
+      if (js.bestReachable && !js.allDecided) {
+        statusHtml = `<div class="wc-joker-status">🃏 ${wcEsc(t('wc.joker.progress'))}: <strong>${js.correct} / ${js.decided}</strong> ${wcEsc(t('wc.joker.correctOf'))} — ${wcEsc(t('wc.joker.alive'))} <strong>${wcEsc(t('wc.joker.' + js.bestReachable.id))}</strong> ${js.bestReachable.medal}</div>`;
+      } else if (!js.bestReachable) {
+        statusHtml = `<div class="wc-joker-status out">🃏 ${wcEsc(t('wc.joker.progress'))}: <strong>${js.correct} / ${js.decided}</strong> ${wcEsc(t('wc.joker.correctOf'))} — ${wcEsc(t('wc.joker.out'))}</div>`;
+      }
+    }
+  }
+
+  return `
+    <div class="wc-joker-banner">
+      <div class="wc-joker-banner-title">🃏 ${wcEsc(t('wc.joker.title'))}</div>
+      <div class="wc-joker-banner-sub">${wcEsc(t('wc.joker.banner'))}</div>
+      <div class="wc-joker-tiers">${tiersHtml}</div>
+      <div class="wc-joker-note">${wcEsc(t('wc.joker.note'))}</div>
+      ${statusHtml}
+    </div>`;
+}
+
 // The actual ranked-list rendering, factored out so both the normal
 // leaderboard view and the "my card" view (which also shows the full
 // overall ranking underneath) can reuse it.
@@ -13797,6 +14042,7 @@ function wcRenderLeaderboardTable(stage) {
           const cls = medalCls[p.rank] || '';
           const golden = wcCountGolden(p);
           const goldenHtml = golden > 0 ? `<span class="wc-golden-badge" title="${wcEsc(t('wc.golden.tooltip'))}">${golden}</span>` : '';
+          const jokerHtml = (stage === 'overall') ? wcRenderJokerBadge(p) : '';
           const isMyself = isMe;
           const canShare = true; // any visible player can be shared
           return `
@@ -13806,7 +14052,7 @@ function wcRenderLeaderboardTable(stage) {
               <div class="wc-podium-rank-lbl">${rankLbl[p.rank]}</div>
               <div class="wc-podium-name">${wcEsc(p.name)}</div>
               <div class="wc-podium-pts">${p.score} ${t('wc.lb.point')}</div>
-              <div class="wc-podium-meta">${goldenHtml}</div>
+              <div class="wc-podium-meta">${goldenHtml}${jokerHtml}</div>
             </div>`;
         }).join('')}
       </div>`;
@@ -13819,6 +14065,7 @@ function wcRenderLeaderboardTable(stage) {
     const medal = rank === 1 ? '🥇' : rank === 2 ? '🥈' : rank === 3 ? '🥉' : `#${rank}`;
     const golden = wcCountGolden(p);
     const goldenHtml = golden > 0 ? `<span class="wc-golden-badge" title="${wcEsc(t('wc.golden.tooltip'))}">${golden}</span>` : '';
+    const jokerHtml = (stage === 'overall') ? wcRenderJokerBadge(p) : '';
     const shareBtn = `<button class="wc-lb-btn share" onclick="wcOpenShareCard('${wcEsc(p.id)}', ${stage === 'overall' ? 'null' : `'${stage}'`})" title="${wcEsc(shareLabel)}" aria-label="${wcEsc(shareLabel)}">📤</button>`;
     const actions = `<div class="wc-lb-actions">
            ${shareBtn}
@@ -13827,7 +14074,7 @@ function wcRenderLeaderboardTable(stage) {
     return `
       <div class="wc-lb-row ${cls} ${isMe?'me':''}" data-wc-player="${wcEsc(p.id)}">
         <div class="wc-lb-rank">${medal}</div>
-        <div class="wc-lb-name wc-lb-name-clickable" role="button" tabindex="0" onclick="wcViewParticipant('${wcEsc(p.id)}')" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();wcViewParticipant('${wcEsc(p.id)}');}" title="${viewLabel}" aria-label="${viewLabel}">${wcEsc(p.name)}${goldenHtml}</div>
+        <div class="wc-lb-name wc-lb-name-clickable" role="button" tabindex="0" onclick="wcViewParticipant('${wcEsc(p.id)}')" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();wcViewParticipant('${wcEsc(p.id)}');}" title="${viewLabel}" aria-label="${viewLabel}">${wcEsc(p.name)}${goldenHtml}${jokerHtml}</div>
         <div class="wc-lb-points">${p.score} ${t('wc.lb.point')}</div>
         ${actions}
       </div>`;
@@ -13839,10 +14086,13 @@ function wcRenderLeaderboardTable(stage) {
       ${t('wc.lb.scoring.q')} = ${WC_SCORING.groupQualifier} ${t('wc.lb.point')} ·
       ${t('wc.lb.scoring.qExact')} = ${WC_SCORING.groupQualifier * 2 + WC_SCORING.groupExactOrderBonus} ${t('wc.lb.point')} (${WC_SCORING.groupQualifier * 2} + ${WC_SCORING.groupExactOrderBonus} ${t('wc.lb.scoring.bonus')}) ·
       ${t('wc.lb.scoring.w')} = ${WC_SCORING.knockoutWinner} ${t('wc.lb.point')} ·
-      ${t('wc.lb.scoring.e')} = ${WC_SCORING.knockoutWinner + WC_SCORING.knockoutExactBonus} ${t('wc.lb.point')} (${WC_SCORING.knockoutWinner} + ${WC_SCORING.knockoutExactBonus} ${t('wc.lb.scoring.bonus')})
+      ${t('wc.lb.scoring.e')} = ${WC_SCORING.knockoutWinner + WC_SCORING.knockoutExactBonus} ${t('wc.lb.point')} (${WC_SCORING.knockoutWinner} + ${WC_SCORING.knockoutExactBonus} ${t('wc.lb.scoring.bonus')}) ·
+      🃏 ${t('wc.joker.title')}: ${WC_JOKER.tiers.map(tier => `${tier.medal} ${t('wc.joker.' + tier.id)} = +${tier.pts}`).join(' · ')} ${t('wc.lb.point')}
     </div>`;
 
-  return champCard + podiumHTML + `
+  const jokerBanner = (stage === 'overall') ? wcRenderJokerBanner() : '';
+
+  return champCard + jokerBanner + podiumHTML + `
     <div style="font-size:12.5px;color:var(--text-mute);margin-bottom:10px">
       ${ranked.length} ${t('wc.lb.count')}
     </div>
@@ -14077,11 +14327,12 @@ function wcExportCompetitionData() {
 
   // ── Sheet 1: Leaderboard / latest snapshot per participant ──
   const lbHeader = isEn
-    ? ['Rank', 'Name', 'Total points', 'Groups', 'Round of 32', 'Round of 16', 'Quarter-finals', 'Semi-finals', 'Final', 'Last saved']
-    : ['الترتيب', 'الاسم', 'مجموع النقاط', 'المجموعات', 'دور الـ32', 'دور الـ16', 'ربع النهائي', 'نصف النهائي', 'النهائي', 'آخر حفظ'];
+    ? ['Rank', 'Name', 'Total points', 'Groups', 'Round of 32', 'Round of 16', 'Quarter-finals', 'Semi-finals', 'Final', 'Joker bonus', 'Last saved']
+    : ['الترتيب', 'الاسم', 'مجموع النقاط', 'المجموعات', 'دور الـ32', 'دور الـ16', 'ربع النهائي', 'نصف النهائي', 'النهائي', 'مكافأة الجوكر', 'آخر حفظ'];
   const lbRows = ranked.map((p, i) => [
     ranks[i], p.name, p.score,
     p.byStage.groups, p.byStage.r32, p.byStage.r16, p.byStage.qf, p.byStage.sf, p.byStage.final,
+    p.byStage.joker,
     fmtTs(p.ts),
   ]);
 
