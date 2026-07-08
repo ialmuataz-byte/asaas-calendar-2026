@@ -5112,6 +5112,128 @@ html[lang="en"] .wc-podium-spot.me::after { content: "YOU"; }
 }
 .wc-star-legend-ico { font-size: 15px; line-height: 1; }
 
+/* ── 🧠 Football knowledge quiz ─────────────────────────────────── */
+.wc-quiz-card {
+  margin-top: 18px;
+  background: var(--card, #fff);
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  overflow: hidden;
+}
+.wc-quiz-summary {
+  cursor: pointer;
+  list-style: none;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 13px 16px;
+  font-family: 'Co Headline', 'Tajawal', sans-serif;
+  font-weight: 700;
+  font-size: 14.5px;
+  color: var(--text);
+  background: linear-gradient(135deg, rgba(49,92,59,.06) 0%, rgba(212,175,55,.09) 100%);
+  user-select: none;
+}
+.wc-quiz-summary::-webkit-details-marker { display: none; }
+.wc-quiz-summary::after { content: '▾'; margin-inline-start: auto; color: var(--text-mute); transition: transform .2s; }
+.wc-quiz-card[open] .wc-quiz-summary::after { transform: rotate(180deg); }
+.wc-quiz-badge {
+  font-size: 10px;
+  font-weight: 700;
+  padding: 2px 8px;
+  border-radius: 99px;
+  background: var(--gold-tint, #FFF7E0);
+  border: 1px solid var(--gold-soft, #E3C878);
+  color: var(--clay, #8B5A2B);
+}
+#wcQuizBody { padding: 14px 16px 18px; }
+.wc-quiz-intro-txt { font-size: 12.5px; color: var(--text-soft, var(--text)); line-height: 1.8; margin-bottom: 12px; }
+.wc-quiz-best { font-size: 12px; color: var(--text-mute); margin-bottom: 12px; }
+.wc-quiz-start-btn, .wc-quiz-next-btn {
+  display: inline-block;
+  padding: 9px 22px;
+  border: none;
+  border-radius: 10px;
+  background: var(--green-dark, #315C3B);
+  color: #fff;
+  font-family: 'Co Headline', 'Tajawal', sans-serif;
+  font-weight: 700;
+  font-size: 13.5px;
+  cursor: pointer;
+  transition: transform .15s, opacity .15s;
+}
+.wc-quiz-start-btn:hover, .wc-quiz-next-btn:hover { transform: translateY(-1px); opacity: .92; }
+.wc-quiz-next-btn { margin-top: 12px; }
+.wc-quiz-head {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 8px;
+  font-size: 11.5px;
+  color: var(--text-mute);
+  margin-bottom: 8px;
+}
+.wc-quiz-counter { font-weight: 700; color: var(--text); }
+.wc-quiz-diff { padding: 1px 8px; border-radius: 99px; font-weight: 700; font-size: 10.5px; }
+.wc-quiz-diff.d1 { background: #E8F5E9; color: #2E7D32; border: 1px solid #A5D6A7; }
+.wc-quiz-diff.d2 { background: #FFF8E1; color: #B8860B; border: 1px solid #FFE082; }
+.wc-quiz-diff.d3 { background: #FDECEA; color: #C0392B; border: 1px solid #F5B7B1; }
+.wc-quiz-score { margin-inline-start: auto; font-weight: 700; color: var(--green-dark, #315C3B); font-variant-numeric: tabular-nums; }
+.wc-quiz-progress { height: 5px; background: var(--bg-2, #F1EDE4); border-radius: 99px; overflow: hidden; margin-bottom: 14px; }
+.wc-quiz-progress-fill { height: 100%; background: linear-gradient(90deg, var(--green-dark, #315C3B), #D4AF37); border-radius: 99px; transition: width .3s; }
+.wc-quiz-q {
+  font-size: 15px;
+  font-weight: 700;
+  color: var(--text);
+  line-height: 1.7;
+  margin-bottom: 12px;
+}
+.wc-quiz-opts { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+@media (max-width: 560px) { .wc-quiz-opts { grid-template-columns: 1fr; } }
+.wc-quiz-opt {
+  padding: 11px 12px;
+  border: 1.5px solid var(--border);
+  border-radius: 10px;
+  background: var(--card, #fff);
+  color: var(--text);
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  text-align: center;
+  transition: border-color .15s, background .15s, transform .1s;
+}
+.wc-quiz-opt:hover:not(:disabled) { border-color: var(--green-dark, #315C3B); transform: translateY(-1px); }
+.wc-quiz-opt:disabled { cursor: default; }
+.wc-quiz-opt.correct { background: #E8F5E9; border-color: #2E7D32; color: #1B5E20; }
+.wc-quiz-opt.wrong { background: #FDECEA; border-color: #C0392B; color: #922B21; }
+.wc-quiz-opt.idle { opacity: .55; }
+.wc-quiz-fb { margin-top: 12px; font-size: 13px; font-weight: 700; }
+.wc-quiz-fb.ok { color: #2E7D32; }
+.wc-quiz-fb.bad { color: #C0392B; }
+.wc-quiz-result { text-align: center; padding: 6px 0; }
+.wc-quiz-result-emoji { font-size: 44px; margin-bottom: 6px; }
+.wc-quiz-result-score {
+  font-family: 'Co Headline', 'Tajawal', sans-serif;
+  font-size: 26px;
+  font-weight: 700;
+  color: var(--green-dark, #315C3B);
+  font-variant-numeric: tabular-nums;
+}
+.wc-quiz-result-sub { font-size: 12.5px; color: var(--text-mute); margin: 4px 0; }
+.wc-quiz-result-verdict { font-size: 14px; font-weight: 700; color: var(--text); margin: 8px 0; }
+.wc-quiz-newbest {
+  display: inline-block;
+  margin: 6px 0 12px;
+  padding: 3px 12px;
+  border-radius: 99px;
+  background: var(--gold-tint, #FFF7E0);
+  border: 1px solid var(--gold-soft, #E3C878);
+  color: var(--clay, #8B5A2B);
+  font-size: 12px;
+  font-weight: 700;
+}
+.wc-quiz-note { margin-top: 12px; font-size: 10.5px; color: var(--text-mute); }
+
 /* ── 🃏 Joker challenge ─────────────────────────────────────────── */
 .wc-joker-badge {
   display: inline-flex;
@@ -6605,6 +6727,30 @@ const I18N = {
     'wc.golden.title':        'توقعاتك الذهبية في هذا الدور',
     'wc.golden.tooltip':      'نتيجة مضبوطة 100%',
     'wc.star.legend':         'النجمة ⭐ بجانب الاسم تعني أن المشارك أصاب النتيجة المضبوطة 100%، والرقم يوضح عدد النتائج الصحيحة التي حققها — كلما زادت إصاباته زاد الرقم.',
+    // 🧠 quiz
+    'wc.quiz.title':          'اختبر ثقافتك الرياضية',
+    'wc.quiz.tag':            'للمتعة فقط',
+    'wc.quiz.intro':          '15 سؤالاً عن المونديال الحالي والمونديالات السابقة، تتدرّج من السهل إلى الصعب، وتتغيّر الأسئلة في كل مرة. نقاط هذا الاختبار مستقلة تماماً ولا تُحتسب في مسابقة التوقعات.',
+    'wc.quiz.start':          'ابدأ الاختبار',
+    'wc.quiz.retry':          'جرّب من جديد',
+    'wc.quiz.question':       'سؤال',
+    'wc.quiz.score':          'رصيدك',
+    'wc.quiz.pts':            'نقطة',
+    'wc.quiz.d1':             'سهل',
+    'wc.quiz.d2':             'متوسط',
+    'wc.quiz.d3':             'صعب',
+    'wc.quiz.right':          'إجابة صحيحة!',
+    'wc.quiz.wrongIs':        'الإجابة الصحيحة',
+    'wc.quiz.next':           'السؤال التالي',
+    'wc.quiz.finish':         'إنهاء الاختبار',
+    'wc.quiz.correctOf':      'الإجابات الصحيحة',
+    'wc.quiz.best':           'أفضل نتيجة لك',
+    'wc.quiz.newBest':        'رقم قياسي جديد لك!',
+    'wc.quiz.v1':             'مذهل! أنت موسوعة مونديالية 🤯',
+    'wc.quiz.v2':             'ممتاز! ثقافتك الكروية قوية جداً',
+    'wc.quiz.v3':             'جيد! تعرف الكثير عن المونديال',
+    'wc.quiz.v4':             'لا بأس — أعد المحاولة وسترتفع نتيجتك',
+    'wc.quiz.separate':       'نقاط الاختبار للمتعة فقط ولا علاقة لها بنقاط مسابقة التوقعات.',
     // 🃏 Joker challenge
     'wc.joker.title':         'تحدّي الجوكر',
     'wc.joker.banner':        'توقّع الفائزين في كل المباريات المتبقية (ربع النهائي حتى النهائي) واكسب مكافأة ضخمة فوق نقاطك الأساسية:',
@@ -6933,6 +7079,30 @@ const I18N = {
     'wc.golden.title':        'Your golden picks in this round',
     'wc.golden.tooltip':      '100% exact score',
     'wc.star.legend':         'The star ⭐ next to a name means the participant nailed a 100% exact score — the number shows how many exact results they got; the more correct results, the higher it climbs.',
+    // 🧠 quiz
+    'wc.quiz.title':          'Test Your Football Knowledge',
+    'wc.quiz.tag':            'just for fun',
+    'wc.quiz.intro':          '15 questions about this World Cup and past tournaments, going from easy to hard — the questions change every time you play. Quiz points are completely separate and do NOT count toward the prediction contest.',
+    'wc.quiz.start':          'Start the quiz',
+    'wc.quiz.retry':          'Play again',
+    'wc.quiz.question':       'Question',
+    'wc.quiz.score':          'Your score',
+    'wc.quiz.pts':            'pts',
+    'wc.quiz.d1':             'Easy',
+    'wc.quiz.d2':             'Medium',
+    'wc.quiz.d3':             'Hard',
+    'wc.quiz.right':          'Correct!',
+    'wc.quiz.wrongIs':        'Correct answer',
+    'wc.quiz.next':           'Next question',
+    'wc.quiz.finish':         'Finish quiz',
+    'wc.quiz.correctOf':      'Correct answers',
+    'wc.quiz.best':           'Your best score',
+    'wc.quiz.newBest':        'New personal best!',
+    'wc.quiz.v1':             'Incredible! A walking World Cup encyclopedia 🤯',
+    'wc.quiz.v2':             'Excellent! Seriously strong football knowledge',
+    'wc.quiz.v3':             'Nice! You know your World Cup history',
+    'wc.quiz.v4':             'Not bad — try again and watch your score climb',
+    'wc.quiz.separate':       'Quiz points are just for fun and have nothing to do with the prediction contest points.',
     // 🃏 Joker challenge
     'wc.joker.title':         'The Joker Challenge',
     'wc.joker.banner':        'Predict the winners of ALL remaining matches (quarter-finals through the final) and earn a huge bonus on top of your regular points:',
@@ -11681,6 +11851,69 @@ const WC_JOKER = {
 };
 
 // ────────────────────────────────────────────────────────────────
+// 🧠 "Test your football knowledge" quiz — question pool
+// ────────────────────────────────────────────────────────────────
+// Standalone mini-game inside the predict tab. Points are completely
+// SEPARATE from the prediction contest. Each session draws
+// WC_QUIZ_PER_LEVEL random questions from each difficulty level
+// (d: 1 easy, 2 medium, 3 hard) and presents them easy → hard, so the
+// questions change every visit. `a` is the index of the correct answer
+// inside `o` (options); option order is re-shuffled per session.
+// Scoring: easy = 1 pt, medium = 2 pts, hard = 3 pts (max 30).
+const WC_QUIZ_PER_LEVEL = 5;
+const WC_QUIZ_POINTS = { 1: 1, 2: 2, 3: 3 };
+const WC_QUIZ_POOL = [
+  // ── EASY ──────────────────────────────────────────────────────
+  { d:1, a:2, ar:{ q:'كم عدد المنتخبات المشاركة في مونديال 2026؟', o:['32','40','48','64'] }, en:{ q:'How many teams play in the 2026 World Cup?', o:['32','40','48','64'] } },
+  { d:1, a:1, ar:{ q:'ما الدول المستضيفة لمونديال 2026؟', o:['أمريكا وكندا فقط','أمريكا وكندا والمكسيك','المكسيك والبرازيل','أمريكا والمكسيك فقط'] }, en:{ q:'Who hosts the 2026 World Cup?', o:['USA & Canada only','USA, Canada & Mexico','Mexico & Brazil','USA & Mexico only'] } },
+  { d:1, a:0, ar:{ q:'من بطل مونديال قطر 2022؟', o:['الأرجنتين','فرنسا','البرازيل','كرواتيا'] }, en:{ q:'Who won the 2022 World Cup in Qatar?', o:['Argentina','France','Brazil','Croatia'] } },
+  { d:1, a:3, ar:{ q:'ما أكثر منتخب تتويجاً بكأس العالم؟', o:['ألمانيا','الأرجنتين','إيطاليا','البرازيل'] }, en:{ q:'Which nation has won the most World Cups?', o:['Germany','Argentina','Italy','Brazil'] } },
+  { d:1, a:1, ar:{ q:'من سجّل هاتريك في نهائي مونديال 2022؟', o:['ميسي','كيليان مبابي','دي ماريا','جيرو'] }, en:{ q:'Who scored a hat-trick in the 2022 final?', o:['Messi','Kylian Mbappé','Di María','Giroud'] } },
+  { d:1, a:2, ar:{ q:'أين أقيمت أول نسخة من كأس العالم عام 1930؟', o:['البرازيل','إيطاليا','الأوروغواي','فرنسا'] }, en:{ q:'Where was the first World Cup held in 1930?', o:['Brazil','Italy','Uruguay','France'] } },
+  { d:1, a:1, ar:{ q:'كم مرة فازت البرازيل بكأس العالم؟', o:['4','5','6','3'] }, en:{ q:'How many World Cups has Brazil won?', o:['4','5','6','3'] } },
+  { d:1, a:0, ar:{ q:'من بطل مونديال روسيا 2018؟', o:['فرنسا','كرواتيا','ألمانيا','بلجيكا'] }, en:{ q:'Who won the 2018 World Cup in Russia?', o:['France','Croatia','Germany','Belgium'] } },
+  { d:1, a:3, ar:{ q:'كل كم سنة تُقام بطولة كأس العالم؟', o:['سنتين','3 سنوات','5 سنوات','4 سنوات'] }, en:{ q:'How often is the World Cup held?', o:['Every 2 years','Every 3 years','Every 5 years','Every 4 years'] } },
+  { d:1, a:2, ar:{ q:'ما أول دولة أفريقية استضافت المونديال (2010)؟', o:['مصر','المغرب','جنوب أفريقيا','نيجيريا'] }, en:{ q:'Which was the first African country to host the World Cup (2010)?', o:['Egypt','Morocco','South Africa','Nigeria'] } },
+  { d:1, a:0, ar:{ q:'ما أول دولة عربية استضافت المونديال؟', o:['قطر','السعودية','الإمارات','المغرب'] }, en:{ q:'Which was the first Arab country to host the World Cup?', o:['Qatar','Saudi Arabia','UAE','Morocco'] } },
+  { d:1, a:1, ar:{ q:'من بطل مونديال البرازيل 2014؟', o:['الأرجنتين','ألمانيا','هولندا','البرازيل'] }, en:{ q:'Who won the 2014 World Cup in Brazil?', o:['Argentina','Germany','Netherlands','Brazil'] } },
+  { d:1, a:2, ar:{ q:'من قائد الأرجنتين المتوّج بمونديال 2022؟', o:['دي ماريا','أوتاميندي','ليونيل ميسي','مارتينيز'] }, en:{ q:'Who captained Argentina to the 2022 title?', o:['Di María','Otamendi','Lionel Messi','Martínez'] } },
+  { d:1, a:0, ar:{ q:'في أي ولاية أمريكية يُقام نهائي مونديال 2026؟', o:['نيوجيرسي','كاليفورنيا','تكساس','فلوريدا'] }, en:{ q:'In which US state is the 2026 final played?', o:['New Jersey','California','Texas','Florida'] } },
+  { d:1, a:1, ar:{ q:'من بطل مونديال جنوب أفريقيا 2010؟', o:['هولندا','إسبانيا','ألمانيا','البرازيل'] }, en:{ q:'Who won the 2010 World Cup in South Africa?', o:['Netherlands','Spain','Germany','Brazil'] } },
+  // ── MEDIUM ────────────────────────────────────────────────────
+  { d:2, a:2, ar:{ q:'كم مباراة تُقام في مونديال 2026؟', o:['64','80','104','96'] }, en:{ q:'How many matches are played at the 2026 World Cup?', o:['64','80','104','96'] } },
+  { d:2, a:1, ar:{ q:'كم انتهى نهائي 2022 قبل ركلات الترجيح؟', o:['2-2','3-3','4-3','2-1'] }, en:{ q:'What was the 2022 final score before penalties?', o:['2-2','3-3','4-3','2-1'] } },
+  { d:2, a:0, ar:{ q:'من هزم البرازيل 7-1 في نصف نهائي 2014؟', o:['ألمانيا','هولندا','الأرجنتين','فرنسا'] }, en:{ q:'Who beat Brazil 7-1 in the 2014 semi-final?', o:['Germany','Netherlands','Argentina','France'] } },
+  { d:2, a:3, ar:{ q:'ما أول منتخب أفريقي يبلغ نصف نهائي المونديال؟', o:['السنغال','غانا','الكاميرون','المغرب'] }, en:{ q:'Which was the first African team to reach a World Cup semi-final?', o:['Senegal','Ghana','Cameroon','Morocco'] } },
+  { d:2, a:1, ar:{ q:'من سجّل هدف "يد الله" الشهير عام 1986؟', o:['بيليه','مارادونا','زيكو','باتيستوتا'] }, en:{ q:'Who scored the famous "Hand of God" goal in 1986?', o:['Pelé','Maradona','Zico','Batistuta'] } },
+  { d:2, a:2, ar:{ q:'كم عدد ملاعب مونديال 2026؟', o:['12','14','16','20'] }, en:{ q:'How many stadiums host the 2026 World Cup?', o:['12','14','16','20'] } },
+  { d:2, a:0, ar:{ q:'من هداف مونديال 2022 برصيد 8 أهداف؟', o:['مبابي','ميسي','جيرو','ألفاريز'] }, en:{ q:'Who was the 2022 World Cup top scorer with 8 goals?', o:['Mbappé','Messi','Giroud','Álvarez'] } },
+  { d:2, a:1, ar:{ q:'ما المنتخب الوحيد الذي شارك في جميع نسخ المونديال؟', o:['ألمانيا','البرازيل','الأرجنتين','إيطاليا'] }, en:{ q:'Which is the only nation to appear at every World Cup?', o:['Germany','Brazil','Argentina','Italy'] } },
+  { d:2, a:2, ar:{ q:'من فاز بمونديال 1966 على أرضه؟', o:['ألمانيا','البرازيل','إنجلترا','إيطاليا'] }, en:{ q:'Who won the 1966 World Cup at home?', o:['Germany','Brazil','England','Italy'] } },
+  { d:2, a:0, ar:{ q:'من أصغر لاعب سجّل في نهائي كأس العالم (1958)؟', o:['بيليه','إوزيبيو','مارادونا','روماريو'] }, en:{ q:'Who is the youngest scorer in a World Cup final (1958)?', o:['Pelé','Eusébio','Maradona','Romário'] } },
+  { d:2, a:3, ar:{ q:'ما أول مونديال أقيم باستضافة مشتركة (2002)؟', o:['أمريكا والمكسيك','إسبانيا والبرتغال','الأرجنتين وتشيلي','كوريا واليابان'] }, en:{ q:'Which was the first co-hosted World Cup (2002)?', o:['USA & Mexico','Spain & Portugal','Argentina & Chile','Korea & Japan'] } },
+  { d:2, a:1, ar:{ q:'كم مرة خسرت هولندا نهائي المونديال دون أن تفوز به؟', o:['مرتين','3 مرات','4 مرات','مرة واحدة'] }, en:{ q:'How many World Cup finals has the Netherlands lost without ever winning?', o:['Two','Three','Four','One'] } },
+  { d:2, a:2, ar:{ q:'من فاز بالكرة الذهبية لأفضل لاعب في مونديال 2022؟', o:['مبابي','مودريتش','ميسي','جريزمان'] }, en:{ q:'Who won the 2022 World Cup Golden Ball?', o:['Mbappé','Modrić','Messi','Griezmann'] } },
+  { d:2, a:0, ar:{ q:'ما اسم تميمة مونديال 2026 الأمريكية (النسر الأصلع)؟', o:['كلاتش','مابل','زايو','فيليكس'] }, en:{ q:'What is the name of the 2026 US mascot (the bald eagle)?', o:['Clutch','Maple','Zayu','Felix'] } },
+  { d:2, a:3, ar:{ q:'من استضاف مونديال 2006؟', o:['فرنسا','إيطاليا','إسبانيا','ألمانيا'] }, en:{ q:'Who hosted the 2006 World Cup?', o:['France','Italy','Spain','Germany'] } },
+  // ── HARD ──────────────────────────────────────────────────────
+  { d:3, a:1, ar:{ q:'من صاحب أسرع هدف في تاريخ المونديال (10.8 ثانية)؟', o:['روبن','هاكان شوكور','إبراهيموفيتش','أوين'] }, en:{ q:'Who scored the fastest World Cup goal ever (10.8 s)?', o:['Robben','Hakan Şükür','Ibrahimović','Owen'] } },
+  { d:3, a:2, ar:{ q:'من الحارس الوحيد الفائز بجائزة أفضل لاعب في المونديال (2002)؟', o:['بوفون','كاسياس','أوليفر كان','نوير'] }, en:{ q:'Who is the only goalkeeper to win the World Cup Golden Ball (2002)?', o:['Buffon','Casillas','Oliver Kahn','Neuer'] } },
+  { d:3, a:0, ar:{ q:'كم هدفاً سجّل جوست فونتين في مونديال 1958 وحده؟', o:['13','11','9','15'] }, en:{ q:'How many goals did Just Fontaine score at the 1958 World Cup alone?', o:['13','11','9','15'] } },
+  { d:3, a:1, ar:{ q:'ما أكبر نتيجة في تاريخ المونديال؟', o:['ألمانيا 8-0 السعودية','المجر 10-1 السلفادور','البرازيل 9-0 هايتي','فرنسا 9-1 زامبيا'] }, en:{ q:'What is the biggest win in World Cup history?', o:['Germany 8-0 Saudi Arabia','Hungary 10-1 El Salvador','Brazil 9-0 Haiti','France 9-1 Zambia'] } },
+  { d:3, a:2, ar:{ q:'ما أول مونديال استخدم تقنية حكم الفيديو VAR؟', o:['2014','2022','2018','2010'] }, en:{ q:'Which World Cup first used VAR?', o:['2014','2022','2018','2010'] } },
+  { d:3, a:0, ar:{ q:'من سجّل أول هدف في تاريخ كأس العالم (1930)؟', o:['لوسيان لوران','غييرمو ستابيلي','هيكتور كاسترو','بيدرو سيا'] }, en:{ q:'Who scored the first ever World Cup goal (1930)?', o:['Lucien Laurent','Guillermo Stábile','Héctor Castro','Pedro Cea'] } },
+  { d:3, a:3, ar:{ q:'ما أول منتخب عربي يتأهل لدور الـ16 (1986)؟', o:['تونس','الجزائر','السعودية','المغرب'] }, en:{ q:'Which was the first Arab team to reach the round of 16 (1986)?', o:['Tunisia','Algeria','Saudi Arabia','Morocco'] } },
+  { d:3, a:1, ar:{ q:'كم عدد أهداف ميروسلاف كلوزه التاريخية في المونديال؟', o:['15','16','17','14'] }, en:{ q:'How many World Cup goals did Miroslav Klose score in total?', o:['15','16','17','14'] } },
+  { d:3, a:2, ar:{ q:'من صاحب الرقم القياسي في عدد مباريات المونديال (26 مباراة)؟', o:['رونالدو','ماتيوس','ميسي','بوفون'] }, en:{ q:'Who holds the record for most World Cup matches played (26)?', o:['Ronaldo','Matthäus','Messi','Buffon'] } },
+  { d:3, a:0, ar:{ q:'ما أول دولة استضافت المونديال مرتين؟', o:['المكسيك','إيطاليا','فرنسا','البرازيل'] }, en:{ q:'Which was the first country to host the World Cup twice?', o:['Mexico','Italy','France','Brazil'] } },
+  { d:3, a:1, ar:{ q:'كم مرة تكون المكسيك قد استضافت المونديال بحلول 2026؟', o:['مرتين','3 مرات','4 مرات','مرة واحدة'] }, en:{ q:'By 2026, how many times will Mexico have hosted the World Cup?', o:['Twice','Three times','Four times','Once'] } },
+  { d:3, a:2, ar:{ q:'في أي نسخة ارتفع عدد المشاركين إلى 24 منتخباً لأول مرة؟', o:['1978 الأرجنتين','1986 المكسيك','1982 إسبانيا','1990 إيطاليا'] }, en:{ q:'At which World Cup did the field first expand to 24 teams?', o:['Argentina 1978','Mexico 1986','Spain 1982','Italy 1990'] } },
+  { d:3, a:0, ar:{ q:'بين من كانت مباراة "معركة سانتياغو" الشهيرة عام 1962؟', o:['تشيلي وإيطاليا','البرازيل والأرجنتين','ألمانيا والمجر','الأوروغواي وفرنسا'] }, en:{ q:'Who played the infamous "Battle of Santiago" in 1962?', o:['Chile & Italy','Brazil & Argentina','Germany & Hungary','Uruguay & France'] } },
+  { d:3, a:3, ar:{ q:'من أكبر لاعب سناً سجّل في المونديال (42 عاماً، 1994)؟', o:['زوف','ماتيوس','ستويشكوف','روجيه ميلا'] }, en:{ q:'Who is the oldest World Cup goalscorer (42 years, 1994)?', o:['Zoff','Matthäus','Stoichkov','Roger Milla'] } },
+  { d:3, a:1, ar:{ q:'من فاز بجائزة أفضل لاعب شاب في مونديال 2022؟', o:['غافي','إنزو فيرنانديز','بيلينغهام','موسيالا'] }, en:{ q:'Who won the 2022 World Cup Young Player award?', o:['Gavi','Enzo Fernández','Bellingham','Musiala'] } },
+];
+
+// ────────────────────────────────────────────────────────────────
 // 2026 group draw (official, Dec 5, 2025)
 // ────────────────────────────────────────────────────────────────
 const WC_GROUPS = [
@@ -13491,7 +13724,7 @@ function wcRenderPredict() {
   // already a no-op for them (it returns '' without a registered name) —
   // so skip the completion-check/submit-row machinery entirely for guests.
   if (guest) {
-    return guestBanner + wcGroupsNotice() + wcRenderBigCountdown() + wcRenderLastResultStrip() + stageCards;
+    return guestBanner + wcGroupsNotice() + wcRenderBigCountdown() + wcRenderLastResultStrip() + stageCards + wcRenderQuizSection();
   }
 
   // Completion check for every currently-open stage — the participant can't
@@ -13550,7 +13783,176 @@ function wcRenderPredict() {
       </div>`;
   }
 
-  return adminBanner + wcRenderOpportunityCard() + liveTotalBar + wcGroupsNotice() + wcRenderBigCountdown() + wcRenderLastResultStrip() + stageCards + submitRow;
+  return adminBanner + wcRenderOpportunityCard() + liveTotalBar + wcGroupsNotice() + wcRenderBigCountdown() + wcRenderLastResultStrip() + stageCards + submitRow + wcRenderQuizSection();
+}
+
+// ────────────────────────────────────────────────────────────────
+// 🧠 "Test your football knowledge" quiz — logic & rendering
+// ────────────────────────────────────────────────────────────────
+// Session-local mini-game. Its points are entirely separate from the
+// prediction contest and never touch wcTotal / the leaderboard. Only the
+// personal best is persisted, in localStorage (per browser).
+const WC_QUIZ_BEST_KEY = 'asaas_wc_quiz_best';
+let wcQuizState = { phase: 'intro', qs: [], idx: 0, score: 0, correct: 0, picked: null };
+
+function wcQuizShuffle(arr) {
+  const a = arr.slice();
+  for (let i = a.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [a[i], a[j]] = [a[j], a[i]];
+  }
+  return a;
+}
+
+// Build a fresh session: N random questions per difficulty, easy → hard,
+// with each question's options re-shuffled so even a repeated question
+// doesn't look identical.
+function wcQuizBuildSession() {
+  const session = [];
+  [1, 2, 3].forEach(d => {
+    const pool = wcQuizShuffle(WC_QUIZ_POOL.filter(q => q.d === d)).slice(0, WC_QUIZ_PER_LEVEL);
+    pool.forEach(q => {
+      const order = wcQuizShuffle([0, 1, 2, 3]);
+      session.push({ src: q, order, answer: order.indexOf(q.a) });
+    });
+  });
+  return session;
+}
+
+function wcQuizBest() {
+  const v = parseInt(localStorage.getItem(WC_QUIZ_BEST_KEY) || '0', 10);
+  return isNaN(v) ? 0 : v;
+}
+
+function wcQuizMaxScore() {
+  return [1, 2, 3].reduce((s, d) => s + WC_QUIZ_PER_LEVEL * WC_QUIZ_POINTS[d], 0);
+}
+
+window.wcQuizStart = function() {
+  wcQuizState = { phase: 'playing', qs: wcQuizBuildSession(), idx: 0, score: 0, correct: 0, picked: null };
+  wcQuizRefresh();
+};
+
+window.wcQuizAnswer = function(optIdx) {
+  const st = wcQuizState;
+  if (st.phase !== 'playing' || st.picked != null) return;
+  st.picked = optIdx;
+  const cur = st.qs[st.idx];
+  if (optIdx === cur.answer) {
+    st.correct++;
+    st.score += WC_QUIZ_POINTS[cur.src.d];
+  }
+  wcQuizRefresh();
+};
+
+window.wcQuizNext = function() {
+  const st = wcQuizState;
+  if (st.picked == null) return;
+  if (st.idx + 1 >= st.qs.length) {
+    st.phase = 'done';
+    if (st.score > wcQuizBest()) {
+      try { localStorage.setItem(WC_QUIZ_BEST_KEY, String(st.score)); } catch (e) {}
+    }
+  } else {
+    st.idx++;
+    st.picked = null;
+  }
+  wcQuizRefresh();
+};
+
+window.wcQuizRetry = function() {
+  window.wcQuizStart();
+};
+
+// Patch only the quiz body in place so answering never re-renders the
+// whole predict tab (which would reset scroll / lose focus elsewhere).
+function wcQuizRefresh() {
+  const el = document.getElementById('wcQuizBody');
+  if (el) el.innerHTML = wcRenderQuizBody();
+}
+
+function wcRenderQuizBody() {
+  const isEn = (CURRENT_LANG === 'en');
+  const st = wcQuizState;
+  const maxScore = wcQuizMaxScore();
+  const best = wcQuizBest();
+
+  if (st.phase === 'intro' || !st.qs.length) {
+    const bestLine = best > 0
+      ? `<div class="wc-quiz-best">🏅 ${t('wc.quiz.best')}: <strong>${best}</strong> / ${maxScore}</div>`
+      : '';
+    return `
+      <div class="wc-quiz-intro">
+        <div class="wc-quiz-intro-txt">${wcEsc(t('wc.quiz.intro'))}</div>
+        ${bestLine}
+        <button type="button" class="wc-quiz-start-btn" onclick="wcQuizStart()">🚀 ${wcEsc(t('wc.quiz.start'))}</button>
+      </div>`;
+  }
+
+  if (st.phase === 'done') {
+    const pct = st.correct / st.qs.length;
+    const verdictKey = pct >= 0.9 ? 'wc.quiz.v1' : pct >= 0.6 ? 'wc.quiz.v2' : pct >= 0.35 ? 'wc.quiz.v3' : 'wc.quiz.v4';
+    const isNewBest = st.score >= best && st.score > 0;
+    return `
+      <div class="wc-quiz-result">
+        <div class="wc-quiz-result-emoji">${pct >= 0.9 ? '🏆' : pct >= 0.6 ? '🎉' : pct >= 0.35 ? '👏' : '💪'}</div>
+        <div class="wc-quiz-result-score">${st.score} / ${maxScore} ${wcEsc(t('wc.quiz.pts'))}</div>
+        <div class="wc-quiz-result-sub">${wcEsc(t('wc.quiz.correctOf'))}: ${st.correct} / ${st.qs.length}</div>
+        <div class="wc-quiz-result-verdict">${wcEsc(t(verdictKey))}</div>
+        ${isNewBest ? `<div class="wc-quiz-newbest">⭐ ${wcEsc(t('wc.quiz.newBest'))}</div>` : `<div class="wc-quiz-best">🏅 ${t('wc.quiz.best')}: <strong>${Math.max(best, st.score)}</strong> / ${maxScore}</div>`}
+        <button type="button" class="wc-quiz-start-btn" onclick="wcQuizRetry()">🔄 ${wcEsc(t('wc.quiz.retry'))}</button>
+        <div class="wc-quiz-note">${wcEsc(t('wc.quiz.separate'))}</div>
+      </div>`;
+  }
+
+  // playing
+  const cur = st.qs[st.idx];
+  const loc = isEn ? cur.src.en : cur.src.ar;
+  const dLabel = t('wc.quiz.d' + cur.src.d);
+  const dPts = WC_QUIZ_POINTS[cur.src.d];
+  const answered = st.picked != null;
+  const optionsHtml = cur.order.map((srcIdx, dispIdx) => {
+    let cls = '';
+    if (answered) {
+      if (dispIdx === cur.answer) cls = 'correct';
+      else if (dispIdx === st.picked) cls = 'wrong';
+      else cls = 'idle';
+    }
+    return `<button type="button" class="wc-quiz-opt ${cls}" onclick="wcQuizAnswer(${dispIdx})" ${answered ? 'disabled' : ''}>${wcEsc(loc.o[srcIdx])}</button>`;
+  }).join('');
+
+  const feedback = answered
+    ? (st.picked === cur.answer
+        ? `<div class="wc-quiz-fb ok">✅ ${wcEsc(t('wc.quiz.right'))} +${dPts}</div>`
+        : `<div class="wc-quiz-fb bad">❌ ${wcEsc(t('wc.quiz.wrongIs'))}: <strong>${wcEsc(loc.o[cur.order[cur.answer]])}</strong></div>`)
+    : '';
+
+  const isLast = st.idx + 1 >= st.qs.length;
+  const nextBtn = answered
+    ? `<button type="button" class="wc-quiz-next-btn" onclick="wcQuizNext()">${isLast ? '🏁 ' + wcEsc(t('wc.quiz.finish')) : wcEsc(t('wc.quiz.next')) + ' ←'}</button>`
+    : '';
+
+  const progressPct = Math.round((st.idx) * 100 / st.qs.length);
+  return `
+    <div class="wc-quiz-head">
+      <span class="wc-quiz-counter">${wcEsc(t('wc.quiz.question'))} ${st.idx + 1} / ${st.qs.length}</span>
+      <span class="wc-quiz-diff d${cur.src.d}">${wcEsc(dLabel)} · ${dPts} ${wcEsc(t('wc.quiz.pts'))}</span>
+      <span class="wc-quiz-score">${wcEsc(t('wc.quiz.score'))}: ${st.score}</span>
+    </div>
+    <div class="wc-quiz-progress"><div class="wc-quiz-progress-fill" style="width:${progressPct}%"></div></div>
+    <div class="wc-quiz-q">${wcEsc(loc.q)}</div>
+    <div class="wc-quiz-opts">${optionsHtml}</div>
+    ${feedback}
+    ${nextBtn}`;
+}
+
+// The collapsible section itself, appended at the bottom of the predict tab.
+function wcRenderQuizSection() {
+  return `
+    <details class="wc-quiz-card">
+      <summary class="wc-quiz-summary">🧠 ${wcEsc(t('wc.quiz.title'))}<span class="wc-quiz-badge">${wcEsc(t('wc.quiz.tag'))}</span></summary>
+      <div id="wcQuizBody">${wcRenderQuizBody()}</div>
+    </details>`;
 }
 
 function wcRenderStageOverview() {
