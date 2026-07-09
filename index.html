@@ -6583,7 +6583,7 @@ const I18N = {
     'wc.submit.saving':       '⏳ جارٍ الحفظ…',
     'wc.submit.done':         '✓ تم الحفظ بنجاح',
     'wc.submit.error':        'حدث خطأ أثناء الحفظ. حاول مرة أخرى.',
-    'wc.submit.incomplete':   'أكمل توقعات كل المجموعات أولاً',
+    'wc.submit.incomplete':   'أكمل توقعاتك الناقصة أولاً',
     'wc.submit.progress':     'مجموعات مكتملة',
     'wc.submit.remaining':    'لا يمكن حفظ التوقعات قبل إكمالها. الناقص:',
     'wc.submit.allDone':      '✓ كل المجموعات مكتملة — يمكنك الحفظ الآن',
@@ -6943,7 +6943,7 @@ const I18N = {
     'wc.submit.saving':       '⏳ Saving…',
     'wc.submit.done':         '✓ Saved successfully',
     'wc.submit.error':        'An error occurred while saving. Please try again.',
-    'wc.submit.incomplete':   'Complete all group predictions first',
+    'wc.submit.incomplete':   'Complete your remaining predictions first',
     'wc.submit.progress':     'groups complete',
     'wc.submit.remaining':    'You can\'t save your predictions until they\'re complete. Missing:',
     'wc.submit.allDone':      '✓ All groups complete — you can save now',
@@ -12068,6 +12068,7 @@ const wcState = {
   lbShowMe: false,         // true → leaderboard tab shows the personal contestant card
   koView: 'list',          // bracket | list (knockout display mode) — list is the default view
   activeRound: null,       // groups | r32 | r16 | qf | sf | final — which single round the predict tab shows; null = not yet decided
+  activeRoundPinned: false, // true only after the USER explicitly picks a round — until then the predict tab auto-follows the current round
   stageDetailsOpen: {},    // { [stageId]: true } — closed-stage standings/picks panel, collapsed by default
   admStageOpen: {},        // { [stageId]: bool } — admin results sections; default: only current round visible
   prevTotals: null,        // { [playerId]: prevTotalScore }  for + animation
@@ -12168,6 +12169,17 @@ function wcStageStatus(stage) {
     return now >= closes ? 'closed' : 'open';
   }
 
+  // Sequential guarantee: the tournament's rounds are strictly ordered, so
+  // once the NEXT round's prediction window has opened, this round is over
+  // by definition — even if the admin forgot to enter a kickoff time for
+  // one of its matches. Without this, a single match missing its kickoffAt
+  // kept a finished round "open" forever, and participants kept seeing the
+  // OLD round as "الدور الحالي" instead of the round actually in play.
+  // (The admin's force-open override above still wins over this rule.)
+  const stagePos = WC_STAGES.findIndex(s => s.id === stage.id);
+  const nextStage = stagePos >= 0 ? WC_STAGES[stagePos + 1] : null;
+  if (nextStage && now >= new Date(nextStage.opensAt).getTime()) return 'closed';
+
   // Knockout stages close progressively, match by match: each individual
   // match locks the instant IT kicks off (handled in the predict form), but
   // the ROUND itself stays open as long as at least one of its determined
@@ -12181,8 +12193,25 @@ function wcStageStatus(stage) {
     const closes = new Date(stage.closesAt).getTime();
     return now >= closes ? 'closed' : 'open';
   }
-  const allKickedOff = determined.every(m => m.kickoffAt && now >= new Date(m.kickoffAt).getTime());
-  return allKickedOff ? 'closed' : 'open';
+  // A match counts as concluded once it has kicked off — OR once its
+  // official result has been entered (covers matches where the admin
+  // recorded the score without ever setting a kickoff time).
+  const allConcluded = determined.every(m =>
+    (m.kickoffAt && now >= new Date(m.kickoffAt).getTime()) ||
+    (m.homeScore != null && m.awayScore != null)
+  );
+  return allConcluded ? 'closed' : 'open';
+}
+
+// The round the participant should be looking at RIGHT NOW: of all the
+// stages whose prediction window is open, the LATEST one in tournament
+// order. Stages progress forward, so if an older round is somehow still
+// flagged open alongside the current one (e.g. an admin force-open, or a
+// data gap), the participant must still land on the round actually in
+// play — never on a finished one.
+function wcCurrentOpenStage() {
+  const open = WC_STAGES.filter(s => wcStageStatus(s) === 'open');
+  return open.length ? open[open.length - 1] : null;
 }
 
 // Has this specific knockout match kicked off yet? Used to lock its
@@ -12261,7 +12290,7 @@ function wcRenderCurrentStageBadge() {
   if (!Array.isArray(WC_STAGES) || WC_STAGES.length === 0) return '';
 
   // Find the stage to highlight, in priority order
-  let stage = WC_STAGES.find(s => wcStageStatus(s) === 'open');
+  let stage = wcCurrentOpenStage();
   if (!stage) stage = WC_STAGES.find(s => wcStageStatus(s) === 'upcoming');
   if (!stage) {
     // Everything closed — use the last stage (Final) as the "current" anchor
@@ -13494,7 +13523,7 @@ window.wcScrollToStage = function(stageId) {
 // otherwise the last CLOSED round (tournament finished) — always falls
 // back to the first stage so this never returns nothing.
 function wcDefaultActiveRound() {
-  const open = WC_STAGES.find(s => wcStageStatus(s) === 'open');
+  const open = wcCurrentOpenStage();
   if (open) return open.id;
   const upcoming = WC_STAGES.find(s => wcStageStatus(s) === 'upcoming');
   if (upcoming) return upcoming.id;
@@ -13510,6 +13539,7 @@ function wcDefaultActiveRound() {
 window.wcSetActiveRound = function(stageId) {
   wcState.tab = 'predict';
   wcState.activeRound = stageId;
+  wcState.activeRoundPinned = true; // user chose this round explicitly — stop auto-following
   // Always force the editable list form (not the read-only bracket tree) —
   // this is what actually contains the input fields the participant needs
   // to edit, so jumping here must never leave them looking at the tree.
@@ -13546,7 +13576,7 @@ function wcRenderOpportunityCard() {
   wcEnsureDraft();
 
   const isEn = (typeof CURRENT_LANG !== 'undefined' && CURRENT_LANG === 'en');
-  const stage = WC_STAGES.find(s => wcStageStatus(s) === 'open');
+  const stage = wcCurrentOpenStage();
 
   if (!stage) {
     const upcoming = WC_STAGES.filter(s => wcStageStatus(s) === 'upcoming')
@@ -13634,6 +13664,81 @@ function wcRenderOpportunityCard() {
 }
 
 // ────────────────────────────────────────────────────────────────
+// Submit gate — one source of truth for "can the participant save?"
+// ────────────────────────────────────────────────────────────────
+// Recomputes the completion state of every currently-open stage. Used by
+// the full render AND by the live per-keystroke updater below, so the
+// button/progress can never disagree with what's actually typed in.
+function wcComputeSubmitGate() {
+  const adminEdit = !!wcState.editTargetId;
+  const openStages = adminEdit ? [] : WC_STAGES.filter(s => wcStageStatus(s) === 'open');
+  const stageProgress = openStages
+    .map(s => ({ stage: s, ...wcStageSubmitProgress(wcState.draft, s) }))
+    .filter(p => p.total > 0); // nothing currently required for this stage
+  const incompleteStages = stageProgress.filter(p => p.completed < p.total);
+  return {
+    stageProgress,
+    blockSubmit: incompleteStages.length > 0,
+    remainingTotal: incompleteStages.reduce((sum, p) => sum + (p.total - p.completed), 0),
+  };
+}
+
+// Builds the progress-helper HTML shown above the submit button.
+function wcBuildSubmitHelper(gate) {
+  if (!gate.stageProgress.length) return '';
+  const isEn = (CURRENT_LANG === 'en');
+  const spbRows = gate.stageProgress.map(p => {
+    const pct = p.total > 0 ? Math.round(p.completed * 100 / p.total) : 100;
+    const done = p.completed >= p.total;
+    const unit = p.stage.id === 'groups' ? (isEn ? 'groups' : 'مجموعة') : (isEn ? 'matches' : 'مباراة');
+    const countText = isEn ? `${p.completed}/${p.total}` : `أكملت ${p.completed} من ${p.total} ${unit}`;
+    const missing = done ? [] : wcStageMissingItems(wcState.draft, p.stage);
+    const missingLine = missing.length
+      ? `<div class="wc-spb-missing">${isEn ? 'Missing' : 'الناقص'}: ${missing.map(wcEsc).join('، ')}</div>`
+      : '';
+    return `
+      <div class="wc-spb-row ${done ? 'done' : ''}">
+        <div class="wc-spb-label">${p.stage.icon} ${t('wc.stage.'+p.stage.id)}</div>
+        <div class="wc-spb-track"><div class="wc-spb-fill" style="width:${pct}%"></div></div>
+        <div class="wc-spb-count">${countText}</div>
+        ${missingLine}
+      </div>`;
+  }).join('');
+  const topMsg = gate.blockSubmit
+    ? `<span class="wc-submit-msg">${t('wc.submit.remaining')} ${gate.remainingTotal}</span>`
+    : `<span class="wc-submit-msg ok-msg">${t('wc.submit.allDone')}</span>`;
+  return `
+    <div class="wc-submit-helper ${gate.blockSubmit ? 'warn' : 'ok'}">
+      ${topMsg}
+      <div class="wc-spb-list">${spbRows}</div>
+    </div>`;
+}
+
+// LIVE updater — called on every score keystroke / penalty pick. Score
+// inputs deliberately avoid a full re-render (it would steal keyboard
+// focus mid-typing), but that used to leave the submit row frozen: the
+// participant would fill every match and the button would stay locked at
+// "أكملت 0 من N". This patches ONLY the helper + button in place, keeping
+// the button element itself (and its onclick wiring) intact.
+function wcUpdateSubmitGate() {
+  const btn = document.getElementById('wcSubmitBtn');
+  if (!btn) return;
+  const gate = wcComputeSubmitGate();
+  btn.disabled = gate.blockSubmit;
+  btn.innerHTML = gate.blockSubmit ? '🔒 ' + t('wc.submit.incomplete') : t('wc.submit');
+  const row = btn.closest('.wc-submit-row');
+  if (!row) return;
+  const helperHtml = wcBuildSubmitHelper(gate);
+  const oldHelper = row.querySelector('.wc-submit-helper');
+  if (oldHelper) {
+    if (helperHtml) oldHelper.outerHTML = helperHtml;
+    else oldHelper.remove();
+  } else if (helperHtml) {
+    btn.insertAdjacentHTML('beforebegin', helperHtml);
+  }
+}
+
+// ────────────────────────────────────────────────────────────────
 // Predict tab — stage cards
 // ────────────────────────────────────────────────────────────────
 function wcRenderPredict() {
@@ -13712,7 +13817,11 @@ function wcRenderPredict() {
       // Default, simplified view: ONE round at a time, picked by the round
       // selector below, so the participant is never scrolling past five
       // other rounds to find the one that's actually open right now.
-      if (!wcState.activeRound) wcState.activeRound = wcDefaultActiveRound();
+      // Auto-follow the tournament: until the participant explicitly picks a
+      // round from the selector, always land on the CURRENT round — so when
+      // a round finishes and the next one opens, the form shown is the new
+      // round's, never the finished one.
+      if (!wcState.activeRound || !wcState.activeRoundPinned) wcState.activeRound = wcDefaultActiveRound();
       const activeStage = WC_STAGES.find(s => s.id === wcState.activeRound) || groupsStageObj;
       const activeCard = wcRenderStageCard(activeStage);
       stageCards = wcRenderRoundSelector(activeStage.id) + activeCard
@@ -13732,51 +13841,17 @@ function wcRenderPredict() {
   // STILL-PREDICTABLE match of an open knockout round scored (matches that
   // already kicked off are excluded — missing one shouldn't block the rest
   // of the round). Admin-edit mode bypasses this entirely.
-  const openStages = adminEdit ? [] : WC_STAGES.filter(s => wcStageStatus(s) === 'open');
-  const stageProgress = openStages
-    .map(s => ({ stage: s, ...wcStageSubmitProgress(wcState.draft, s) }))
-    .filter(p => p.total > 0); // nothing currently required for this stage
-  const incompleteStages = stageProgress.filter(p => p.completed < p.total);
-  const blockSubmit = incompleteStages.length > 0;
-  const remainingTotal = incompleteStages.reduce((sum, p) => sum + (p.total - p.completed), 0);
+  const gate = wcComputeSubmitGate();
+  const blockSubmit = gate.blockSubmit;
 
   // Submit button (only if any open stage exists — always shown in admin-edit mode)
   const anyOpen = adminEdit || WC_STAGES.some(s => wcStageStatus(s) === 'open');
 
   let submitRow = '';
   if (anyOpen) {
-    let helperText = '';
-    if (stageProgress.length) {
-      const isEn = (CURRENT_LANG === 'en');
-      const spbRows = stageProgress.map(p => {
-        const pct = p.total > 0 ? Math.round(p.completed * 100 / p.total) : 100;
-        const done = p.completed >= p.total;
-        const unit = p.stage.id === 'groups' ? (isEn ? 'groups' : 'مجموعة') : (isEn ? 'matches' : 'مباراة');
-        const countText = isEn ? `${p.completed}/${p.total}` : `أكملت ${p.completed} من ${p.total} ${unit}`;
-        const missing = done ? [] : wcStageMissingItems(wcState.draft, p.stage);
-        const missingLine = missing.length
-          ? `<div class="wc-spb-missing">${isEn ? 'Missing' : 'الناقص'}: ${missing.map(wcEsc).join('، ')}</div>`
-          : '';
-        return `
-          <div class="wc-spb-row ${done ? 'done' : ''}">
-            <div class="wc-spb-label">${p.stage.icon} ${t('wc.stage.'+p.stage.id)}</div>
-            <div class="wc-spb-track"><div class="wc-spb-fill" style="width:${pct}%"></div></div>
-            <div class="wc-spb-count">${countText}</div>
-            ${missingLine}
-          </div>`;
-      }).join('');
-      const topMsg = blockSubmit
-        ? `<span class="wc-submit-msg">${t('wc.submit.remaining')} ${remainingTotal}</span>`
-        : `<span class="wc-submit-msg ok-msg">${t('wc.submit.allDone')}</span>`;
-      helperText = `
-        <div class="wc-submit-helper ${blockSubmit ? 'warn' : 'ok'}">
-          ${topMsg}
-          <div class="wc-spb-list">${spbRows}</div>
-        </div>`;
-    }
     submitRow = `
       <div class="wc-submit-row">
-        ${helperText}
+        ${wcBuildSubmitHelper(gate)}
         <button class="wc-submit-btn" id="wcSubmitBtn" ${blockSubmit ? 'disabled' : ''}>
           ${blockSubmit ? '🔒 ' + t('wc.submit.incomplete') : t('wc.submit')}
         </button>
@@ -14223,7 +14298,7 @@ function wcRenderStageSummary(stage, myPred, isClosed) {
 // or — once nothing is open (between rounds, or after the tournament ends)
 // — the most recently closed one, so the tab never points at nothing.
 function wcCurrentRoundStageId() {
-  const open = WC_STAGES.find(s => wcStageStatus(s) === 'open');
+  const open = wcCurrentOpenStage();
   if (open) return open.id;
   const closed = WC_STAGES.filter(s => wcStageStatus(s) === 'closed');
   if (closed.length) return closed[closed.length - 1].id;
@@ -15198,6 +15273,7 @@ function wcWireEvents() {
       wcTogglePensRow(card, wcState.draft.knockout[stage][idx], 'draft', stage, idx);
       wcUpdateKoMatchPtsBadge(stage, idx);
       wcUpdateLiveTotalBadge();
+      wcUpdateSubmitGate(); // unlock/refresh the save button as soon as the round is fully predicted
     };
   });
 
@@ -15233,6 +15309,7 @@ function wcWireEvents() {
       row.querySelectorAll('.wc-pens-btn').forEach(b => b.classList.toggle('selected', b === btn));
       wcUpdateKoMatchPtsBadge(stage, idx);
       wcUpdateLiveTotalBadge();
+      wcUpdateSubmitGate();
     };
   });
 
