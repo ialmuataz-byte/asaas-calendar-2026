@@ -5318,6 +5318,92 @@ html[lang="en"] .wc-podium-spot.me::after { content: "YOU"; }
 .wc-joker-status strong { color: var(--green-dark, #315C3B); }
 .wc-joker-status.out { opacity: .75; }
 
+/* Race badge — participant still in the running for a joker tier */
+.wc-joker-badge.race {
+  border-style: dashed;
+  opacity: .95;
+}
+
+/* Clickable joker tiers */
+.wc-joker-tier.clickable {
+  cursor: pointer;
+  transition: transform .15s, box-shadow .15s, border-color .15s;
+  user-select: none;
+}
+.wc-joker-tier.clickable:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 3px 10px rgba(0,0,0,.07);
+  border-color: var(--green, #315C3B);
+}
+.wc-joker-tier.active {
+  border-color: var(--green-dark, #315C3B);
+  box-shadow: 0 0 0 2px rgba(49,92,59,.15);
+  background: var(--bg-2, var(--beige));
+}
+.wc-joker-click-hint {
+  font-size: 10.5px;
+  color: var(--text-mute);
+  margin: -2px 0 8px;
+  display: flex;
+  align-items: center;
+  gap: 5px;
+}
+
+/* Contenders panel */
+.wc-joker-contenders {
+  margin-top: 10px;
+  padding: 10px 12px;
+  border-radius: 10px;
+  border: 1px solid var(--border);
+  background: var(--card, #fff);
+  animation: wcJokerFadeIn .2s ease;
+}
+@keyframes wcJokerFadeIn { from { opacity: 0; transform: translateY(-3px); } to { opacity: 1; transform: none; } }
+.wc-joker-contenders-title {
+  font-weight: 700;
+  font-size: 12.5px;
+  color: var(--text);
+  margin-bottom: 8px;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+.wc-joker-contenders-count {
+  margin-inline-start: auto;
+  font-size: 11px;
+  font-weight: 400;
+  color: var(--text-mute);
+  font-variant-numeric: tabular-nums;
+}
+.wc-joker-contender-list { display: flex; flex-direction: column; gap: 4px; }
+.wc-joker-contender {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 5px 9px;
+  border-radius: 8px;
+  background: var(--bg-2, var(--beige));
+  font-size: 12px;
+  color: var(--text);
+}
+.wc-joker-contender.me {
+  outline: 1px dashed var(--green, #315C3B);
+}
+.wc-joker-contender-name { font-weight: 600; }
+.wc-joker-contender-stat {
+  margin-inline-start: auto;
+  font-size: 11px;
+  color: var(--text-mute);
+  white-space: nowrap;
+  font-variant-numeric: tabular-nums;
+}
+.wc-joker-contenders-empty {
+  font-size: 12px;
+  color: var(--text-mute);
+  text-align: center;
+  padding: 6px 0;
+}
+
 /* Stage-card achievements bar */
 .wc-stage-achievements {
   display: flex;
@@ -6768,6 +6854,12 @@ const I18N = {
     'wc.joker.out':           'خرج من سباق الجوكر',
     'wc.joker.correctOf':     'إصابات صحيحة',
     'wc.joker.pts':           'نقطة مكافأة',
+    'wc.joker.clickHint':     'اضغط على أي فئة لعرض المتنافسين عليها',
+    'wc.joker.contenders':    'المتنافسون على',
+    'wc.joker.winnersOf':     'الفائزون بـ',
+    'wc.joker.noContenders':  'لا يوجد متنافسون على هذه الفئة حاليًا',
+    'wc.joker.noWinners':     'لم يفز أحد بهذه الفئة',
+    'wc.joker.contender':     'متنافس',
 
     'wc.share.title':         'بطاقة ترتيبي',
     'wc.share.download':      '⬇ تحميل الصورة',
@@ -7120,6 +7212,12 @@ const I18N = {
     'wc.joker.out':           'out of the joker race',
     'wc.joker.correctOf':     'correct picks',
     'wc.joker.pts':           'bonus points',
+    'wc.joker.clickHint':     'Tap any tier to see who is competing for it',
+    'wc.joker.contenders':    'Contenders for the',
+    'wc.joker.winnersOf':     'Winners of the',
+    'wc.joker.noContenders':  'No one is in the running for this tier right now',
+    'wc.joker.noWinners':     'No one won this tier',
+    'wc.joker.contender':     'contender(s)',
 
     'wc.share.title':         'My Ranking Card',
     'wc.share.download':      '⬇ Download',
@@ -14481,16 +14579,94 @@ function wcRenderLeaderboard() {
 // joker tier (only possible after all challenge matches are decided).
 function wcRenderJokerBadge(pred) {
   const js = wcJokerStatus(pred);
-  if (!js.tier) return '';
-  const name = t('wc.joker.' + js.tier.id);
-  return `<span class="wc-joker-badge ${js.tier.id}" title="${wcEsc(name)} · +${js.tier.pts} ${wcEsc(t('wc.joker.pts'))}">${js.tier.medal} ${wcEsc(name)}</span>`;
+  // Earned tier (only after all challenge matches are decided)
+  if (js.tier) {
+    const name = t('wc.joker.' + js.tier.id);
+    return `<span class="wc-joker-badge ${js.tier.id}" title="${wcEsc(name)} · +${js.tier.pts} ${wcEsc(t('wc.joker.pts'))}">${js.tier.medal} ${wcEsc(name)}</span>`;
+  }
+  // Still in the race: show the best tier this participant can still reach.
+  // Only once at least one challenge match is decided (before that, everyone
+  // trivially has a shot at gold, so badges would be pure noise).
+  if (!js.allDecided && js.decided > 0 && js.bestReachable) {
+    const name = t('wc.joker.' + js.bestReachable.id);
+    const tip = `${t('wc.joker.alive')} ${name} · ${js.correct} / ${js.decided} ${t('wc.joker.correctOf')}`;
+    return `<span class="wc-joker-badge race ${js.bestReachable.id}" title="${wcEsc(tip)}">${js.bestReachable.medal}</span>`;
+  }
+  return '';
 }
+
+// All participants who can still win the given tier (wrongSoFar ≤ tier.miss),
+// or — once the challenge is fully decided — those who actually earned it.
+function wcJokerContenders(tierId) {
+  const tier = WC_JOKER.tiers.find(t2 => t2.id === tierId);
+  if (!tier) return { tier: null, done: false, list: [] };
+  let done = false;
+  const list = [];
+  (wcState.predictions || []).forEach(p => {
+    const js = wcJokerStatus(p);
+    if (js.allDecided) {
+      done = true;
+      if (js.tier && js.tier.id === tierId) list.push({ p, js });
+    } else if (js.wrongSoFar <= tier.miss) {
+      list.push({ p, js });
+    }
+  });
+  list.sort((a, b) => (b.js.correct - a.js.correct) || a.p.name.localeCompare(b.p.name));
+  return { tier, done, list };
+}
+
+// Click handler for the tier cards in the joker banner: toggles a panel
+// listing everyone still competing for (or who won) the clicked tier.
+window.wcJokerOpenTier = null;
+window.wcToggleJokerTier = function (tierId) {
+  const panel = document.getElementById('wc-joker-contenders');
+  if (!panel) return;
+  // Toggle off if the same tier is clicked again
+  if (window.wcJokerOpenTier === tierId) {
+    window.wcJokerOpenTier = null;
+    panel.innerHTML = '';
+    panel.style.display = 'none';
+    document.querySelectorAll('.wc-joker-tier.active').forEach(el => el.classList.remove('active'));
+    return;
+  }
+  window.wcJokerOpenTier = tierId;
+  document.querySelectorAll('.wc-joker-tier').forEach(el => el.classList.toggle('active', el.dataset.tier === tierId));
+
+  const { tier, done, list } = wcJokerContenders(tierId);
+  if (!tier) return;
+  const tierName = t('wc.joker.' + tier.id);
+  const title = `${tier.medal} ${done ? t('wc.joker.winnersOf') : t('wc.joker.contenders')} ${tierName}`;
+  let body;
+  if (!list.length) {
+    body = `<div class="wc-joker-contenders-empty">${wcEsc(done ? t('wc.joker.noWinners') : t('wc.joker.noContenders'))}</div>`;
+  } else {
+    body = `<div class="wc-joker-contender-list">${list.map(({ p, js }) => `
+      <div class="wc-joker-contender ${p.id === wcState.myId ? 'me' : ''}">
+        <span>🃏</span>
+        <span class="wc-joker-contender-name">${wcEsc(p.name)}</span>
+        <span class="wc-joker-contender-stat">${js.correct} / ${js.decided} ${wcEsc(t('wc.joker.correctOf'))}</span>
+      </div>`).join('')}</div>`;
+  }
+  panel.innerHTML = `
+    <div class="wc-joker-contenders-title">
+      <span>${title}</span>
+      <span class="wc-joker-contenders-count">${list.length} ${wcEsc(t('wc.joker.contender'))}</span>
+    </div>
+    ${body}`;
+  panel.style.display = '';
+};
 
 // Explainer banner shown on the overall leaderboard: the three tiers,
 // their bonuses, and (for the registered viewer) their live race status.
 function wcRenderJokerBanner() {
+  // Reset any previously-open contenders panel (the banner is re-rendered
+  // from scratch, so the old panel node is gone anyway).
+  window.wcJokerOpenTier = null;
   const tiersHtml = WC_JOKER.tiers.map(tier => `
-    <div class="wc-joker-tier">
+    <div class="wc-joker-tier clickable" data-tier="${tier.id}" role="button" tabindex="0"
+         onclick="wcToggleJokerTier('${tier.id}')"
+         onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();wcToggleJokerTier('${tier.id}');}"
+         title="${wcEsc(t('wc.joker.clickHint'))}" aria-label="${wcEsc(t('wc.joker.' + tier.id))}">
       <span class="wc-joker-tier-medal">${tier.medal}</span>
       <span>
         <div class="wc-joker-tier-name">${wcEsc(t('wc.joker.' + tier.id))}</div>
@@ -14520,7 +14696,9 @@ function wcRenderJokerBanner() {
       <div class="wc-joker-banner-title">🃏 ${wcEsc(t('wc.joker.title'))}</div>
       <div class="wc-joker-banner-sub">${wcEsc(t('wc.joker.banner'))}</div>
       <div class="wc-joker-tiers">${tiersHtml}</div>
+      <div class="wc-joker-click-hint">👆 ${wcEsc(t('wc.joker.clickHint'))}</div>
       <div class="wc-joker-note">${wcEsc(t('wc.joker.note'))}</div>
+      <div id="wc-joker-contenders" class="wc-joker-contenders" style="display:none"></div>
       ${statusHtml}
     </div>`;
 }
