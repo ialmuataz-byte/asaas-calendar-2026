@@ -5404,6 +5404,57 @@ html[lang="en"] .wc-podium-spot.me::after { content: "YOU"; }
   padding: 6px 0;
 }
 
+/* ── ✨ Amazing facts card ─────────────────────────────────────── */
+.wc-facts-card {
+  margin: 0 0 14px;
+  padding: 13px 15px 12px;
+  border-radius: var(--radius, 14px);
+  border: 1px solid var(--border);
+  background: var(--card, #fff);
+  box-shadow: var(--shadow-sm, none);
+}
+.wc-facts-header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 9px;
+}
+.wc-facts-title {
+  font-family: 'Co Headline', 'Tajawal', sans-serif;
+  font-weight: 700;
+  font-size: 14px;
+  color: var(--text);
+}
+.wc-facts-shuffle {
+  margin-inline-start: auto;
+  border: 1px solid var(--border);
+  background: var(--bg-2, var(--beige));
+  color: var(--text-soft, var(--text));
+  border-radius: 999px;
+  padding: 4px 11px;
+  font-family: inherit;
+  font-size: 11px;
+  cursor: pointer;
+  transition: border-color .15s, transform .15s;
+}
+.wc-facts-shuffle:hover { border-color: var(--green, #315C3B); transform: translateY(-1px); }
+.wc-facts-list { display: flex; flex-direction: column; gap: 5px; }
+.wc-fact {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  padding: 7px 10px;
+  border-radius: 9px;
+  background: var(--bg-2, var(--beige));
+  font-size: 12px;
+  line-height: 1.7;
+  color: var(--text-soft, var(--text));
+  animation: wcJokerFadeIn .25s ease;
+}
+.wc-fact-ico { font-size: 14px; line-height: 1.5; }
+.wc-fact strong { color: var(--green-dark, #315C3B); }
+.wc-fact .wc-flag-img { vertical-align: -2px; border-radius: 2px; margin-inline-end: 2px; }
+
 /* Stage-card achievements bar */
 .wc-stage-achievements {
   display: flex;
@@ -6860,6 +6911,19 @@ const I18N = {
     'wc.joker.noContenders':  'لا يوجد متنافسون على هذه الفئة حاليًا',
     'wc.joker.noWinners':     'لم يفز أحد بهذه الفئة',
     'wc.joker.contender':     'متنافس',
+    // ✨ Amazing facts
+    'wc.facts.title':         'حقائق مدهشة',
+    'wc.facts.shuffle':       'حقائق أخرى',
+    'wc.facts.snipe':         'الأدقّ في {stage}: {name} — {c} من {d} توقعات صحيحة',
+    'wc.facts.perfect':       'علامة كاملة! {name} — أصاب كل فائزي {stage} ({c}/{c})',
+    'wc.facts.golden':        'أكثر التوقعات الذهبية (النتيجة مطابقة تمامًا): {name} — {n}',
+    'wc.facts.lone':          'توقّع واحد فقط أصاب فوز {team} في {stage}: {name}',
+    'wc.facts.nobody':        'لم يتوقّع أحد فوز {team} على {opp} في {stage}!',
+    'wc.facts.hard':          'مفاجأة {stage}: {c} فقط من {n} توقعوا فوز {team} على {opp}',
+    'wc.facts.easy':          'إجماع الجماهير: {c} من {n} توقعوا فوز {team} على {opp} في {stage}',
+    'wc.facts.streak':        'سلسلة نارية: {name} — {n} توقعات صحيحة متتالية',
+    'wc.facts.champ':         'الأوفر حظًا جماهيريًا: {pct}٪ من المشاركين يتوقعون تتويج {team}',
+    'wc.facts.jokerAlive':    'سباق الجوكر الذهبي: {n} بلا أي خطأ حتى الآن',
 
     'wc.share.title':         'بطاقة ترتيبي',
     'wc.share.download':      '⬇ تحميل الصورة',
@@ -7218,6 +7282,19 @@ const I18N = {
     'wc.joker.noContenders':  'No one is in the running for this tier right now',
     'wc.joker.noWinners':     'No one won this tier',
     'wc.joker.contender':     'contender(s)',
+    // ✨ Amazing facts
+    'wc.facts.title':         'Amazing Facts',
+    'wc.facts.shuffle':       'More facts',
+    'wc.facts.snipe':         'Sharpest in the {stage}: {name} — {c} of {d} correct picks',
+    'wc.facts.perfect':       'Perfect round! {name} — every winner of the {stage} ({c}/{c})',
+    'wc.facts.golden':        'Most golden picks (exact score): {name} — {n}',
+    'wc.facts.lone':          'Only one prediction called {team} to win in the {stage}: {name}',
+    'wc.facts.nobody':        'Nobody predicted {team} to beat {opp} in the {stage}!',
+    'wc.facts.hard':          '{stage} shocker: only {c} of {n} picked {team} over {opp}',
+    'wc.facts.easy':          'Crowd consensus: {c} of {n} picked {team} over {opp} in the {stage}',
+    'wc.facts.streak':        'On fire: {name} — {n} correct picks in a row',
+    'wc.facts.champ':         'Crowd favourite: {pct}% of participants predict {team} to lift the trophy',
+    'wc.facts.jokerAlive':    'Gold joker race: {n} still flawless so far',
 
     'wc.share.title':         'My Ranking Card',
     'wc.share.download':      '⬇ Download',
@@ -14656,6 +14733,185 @@ window.wcToggleJokerTier = function (tierId) {
   panel.style.display = '';
 };
 
+// ────────────────────────────────────────────────────────────────
+// ✨ AMAZING FACTS — auto-generated fun stats for the leaderboard
+// ────────────────────────────────────────────────────────────────
+// Tiny i18n templating: replaces every {token} in the translated string.
+// Values may contain HTML (names are pre-escaped by the callers below).
+function wcFactT(key, vars) {
+  let s = t(key);
+  Object.keys(vars || {}).forEach(k => { s = s.split('{' + k + '}').join(vars[k]); });
+  return s;
+}
+// Names joined + bolded (max 3 shown, then "+n").
+function wcFactNames(names) {
+  const sep = (CURRENT_LANG === 'en') ? ', ' : '، ';
+  let s = names.slice(0, 3).map(n => `<strong>${wcEsc(n)}</strong>`).join(sep);
+  if (names.length > 3) s += ` +${names.length - 3}`;
+  return s;
+}
+// Flag + team name (English UI shows the code, matching the rest of the app).
+function wcFactTeam(code) {
+  const tm = WC_TEAM_MAP[code];
+  if (!tm) return `<strong>${wcEsc(code || '?')}</strong>`;
+  return `${wcFlagImg(code, 12) || tm.flag} <strong>${wcEsc(CURRENT_LANG === 'en' ? code : tm.name)}</strong>`;
+}
+
+// Builds the full pool of facts from decided knockout results.
+// Every fact = { icon, html }. The pool is empty until at least one
+// knockout match has an official result.
+function wcComputeFunFacts() {
+  const facts = [];
+  const preds = wcState.predictions || [];
+  const N = preds.length;
+  if (!N) return facts;
+  const stageIds = ['r32', 'r16', 'qf', 'sf', 'final'];
+
+  // Pass 1 — per stage: per-participant correct counts + per-match hitters
+  const perStage = {};
+  stageIds.forEach(sid => {
+    const actuals = (wcState.results.knockout && wcState.results.knockout[sid]) || [];
+    const st = WC_STAGES.find(s => s.id === sid);
+    const matchStats = [];
+    const perP = preds.map(p => ({ p, correct: 0 }));
+    actuals.forEach((a, i) => {
+      if (!wcKoMatchComplete(a)) return;
+      const wSide = wcKoWinnerSide(a);
+      const wCode = wSide === 'h' ? a.home : a.away;
+      const lCode = wSide === 'h' ? a.away : a.home;
+      const hitters = [];
+      perP.forEach(rec => {
+        const g = wcKoEffectiveGuess(sid, i, (rec.p.knockout && rec.p.knockout[sid]) || []);
+        if (!g) return;
+        const s2 = wcKoWinnerSide(g);
+        if (s2 && s2 === wSide) { rec.correct++; hitters.push(rec.p); }
+      });
+      matchStats.push({ idx: i, wCode, lCode, hitters });
+    });
+    perStage[sid] = { perP, matchStats, matchCount: st ? st.matchCount : 0 };
+  });
+
+  // Pass 2 — build facts
+  const loneFacts = [];
+  stageIds.forEach(sid => {
+    const ps = perStage[sid];
+    const d = ps.matchStats.length;
+    if (!d) return;
+    const stageName = t('wc.stage.' + sid);
+
+    // 💯 Perfect round (stage fully decided, all winners correct)
+    const fullyDecided = d >= ps.matchCount && ps.matchCount > 0;
+    const maxCorrect = Math.max(...ps.perP.map(r => r.correct));
+    if (fullyDecided && maxCorrect === ps.matchCount) {
+      const names = ps.perP.filter(r => r.correct === maxCorrect).map(r => r.p.name);
+      facts.push({ icon: '💯', html: wcFactT('wc.facts.perfect', { name: wcFactNames(names), c: maxCorrect, stage: stageName }) });
+    } else if (maxCorrect >= 1) {
+      // 🎯 Stage sniper — e.g. "الأدقّ في ربع النهائي: مروة — 3 من 4"
+      const names = ps.perP.filter(r => r.correct === maxCorrect).map(r => r.p.name);
+      facts.push({ icon: '🎯', html: wcFactT('wc.facts.snipe', { name: wcFactNames(names), c: maxCorrect, d, stage: stageName }) });
+    }
+
+    // Per-match surprise facts
+    ps.matchStats.forEach(ms => {
+      if (!ms.wCode) return;
+      const ratio = ms.hitters.length / N;
+      if (ms.hitters.length === 0 && ms.lCode) {
+        facts.push({ icon: '😱', html: wcFactT('wc.facts.nobody', { team: wcFactTeam(ms.wCode), opp: wcFactTeam(ms.lCode), stage: stageName }) });
+      } else if (ms.hitters.length === 1 && N >= 3) {
+        loneFacts.push({ icon: '🐺', html: wcFactT('wc.facts.lone', { team: wcFactTeam(ms.wCode), stage: stageName, name: wcFactNames([ms.hitters[0].name]) }) });
+      } else if (ratio <= 0.4 && ms.hitters.length >= 2 && ms.lCode && N >= 5) {
+        facts.push({ icon: '🧊', html: wcFactT('wc.facts.hard', { c: ms.hitters.length, n: N, team: wcFactTeam(ms.wCode), opp: wcFactTeam(ms.lCode), stage: stageName }) });
+      } else if (ratio >= 0.8 && ms.hitters.length >= 3 && ms.lCode) {
+        facts.push({ icon: '🤝', html: wcFactT('wc.facts.easy', { c: ms.hitters.length, n: N, team: wcFactTeam(ms.wCode), opp: wcFactTeam(ms.lCode), stage: stageName }) });
+      }
+    });
+  });
+  // Keep only the 3 most recent lone-wolf facts (later stages last in the loop)
+  facts.push(...loneFacts.slice(-3));
+
+  // ⭐ Golden picks leader
+  let bestGolden = { n: 0, names: [] };
+  preds.forEach(p => {
+    const g = wcCountGolden(p);
+    if (g > bestGolden.n) bestGolden = { n: g, names: [p.name] };
+    else if (g === bestGolden.n && g > 0) bestGolden.names.push(p.name);
+  });
+  if (bestGolden.n > 0) {
+    facts.push({ icon: '⭐', html: wcFactT('wc.facts.golden', { name: wcFactNames(bestGolden.names), n: bestGolden.n }) });
+  }
+
+  // 🔥 Longest streak of consecutive correct winner picks (across all KO rounds)
+  let bestStreak = { n: 0, names: [] };
+  preds.forEach(p => {
+    let cur = 0, best = 0;
+    stageIds.forEach(sid => {
+      perStage[sid].matchStats.forEach(ms => {
+        if (ms.hitters.includes(p)) { cur++; if (cur > best) best = cur; }
+        else cur = 0;
+      });
+    });
+    if (best > bestStreak.n) bestStreak = { n: best, names: [p.name] };
+    else if (best === bestStreak.n && best > 0) bestStreak.names.push(p.name);
+  });
+  if (bestStreak.n >= 3) {
+    facts.push({ icon: '🔥', html: wcFactT('wc.facts.streak', { name: wcFactNames(bestStreak.names), n: bestStreak.n }) });
+  }
+
+  // 👑 Crowd-favourite champion (from final predictions, where the picked
+  // winning TEAM is identifiable via guess stamps or the resolved bracket)
+  const finalActuals = (wcState.results.knockout && wcState.results.knockout.final) || [];
+  const champCounts = {};
+  preds.forEach(p => {
+    const g = wcKoEffectiveGuess('final', 0, (p.knockout && p.knockout.final) || []);
+    const side = g ? wcKoWinnerSide(g) : null;
+    if (!side) return;
+    let code = side === 'h' ? (g.homeTeam || null) : (g.awayTeam || null);
+    if (!code) code = wcKoResolvedTeamCode('final', 0, side === 'h' ? 'home' : 'away', finalActuals[0]);
+    if (!code) return;
+    champCounts[code] = (champCounts[code] || 0) + 1;
+  });
+  const champTop = Object.entries(champCounts).sort((a, b) => b[1] - a[1])[0];
+  if (champTop && champTop[1] >= 2) {
+    facts.push({ icon: '👑', html: wcFactT('wc.facts.champ', { pct: Math.round(champTop[1] / N * 100), team: wcFactTeam(champTop[0]) }) });
+  }
+
+  // 🃏 Still flawless in the gold joker race
+  const flawless = preds.filter(p => {
+    const js = wcJokerStatus(p);
+    return js.decided > 0 && !js.allDecided && js.wrongSoFar === 0;
+  }).length;
+  if (flawless > 0) {
+    facts.push({ icon: '🃏', html: wcFactT('wc.facts.jokerAlive', { n: `<strong>${flawless}</strong>` }) });
+  }
+
+  return facts;
+}
+
+// Renders up to 4 randomly-chosen facts; the 🎲 button reshuffles in place.
+function wcFactsListHtml(pool) {
+  const shuffled = pool.slice().sort(() => Math.random() - 0.5);
+  return shuffled.slice(0, 4).map(f =>
+    `<div class="wc-fact"><span class="wc-fact-ico">${f.icon}</span><span class="wc-fact-text">${f.html}</span></div>`).join('');
+}
+window.wcShuffleFunFacts = function () {
+  const el = document.getElementById('wc-facts-list');
+  if (el) el.innerHTML = wcFactsListHtml(wcComputeFunFacts());
+};
+function wcRenderFunFacts() {
+  const pool = wcComputeFunFacts();
+  if (!pool.length) return ''; // nothing decided yet → hide the card entirely
+  const shuffleBtn = pool.length > 4
+    ? `<button class="wc-facts-shuffle" onclick="wcShuffleFunFacts()">🎲 ${wcEsc(t('wc.facts.shuffle'))}</button>` : '';
+  return `
+    <div class="wc-facts-card">
+      <div class="wc-facts-header">
+        <span class="wc-facts-title">✨ ${wcEsc(t('wc.facts.title'))}</span>
+        ${shuffleBtn}
+      </div>
+      <div id="wc-facts-list" class="wc-facts-list">${wcFactsListHtml(pool)}</div>
+    </div>`;
+}
+
 // Explainer banner shown on the overall leaderboard: the three tiers,
 // their bonuses, and (for the registered viewer) their live race status.
 function wcRenderJokerBanner() {
@@ -14821,6 +15077,7 @@ function wcRenderLeaderboardTable(stage) {
     </div>`;
 
   const jokerBanner = (stage === 'overall') ? wcRenderJokerBanner() : '';
+  const funFacts = (stage === 'overall') ? wcRenderFunFacts() : '';
 
   const starLegend = `
     <div class="wc-star-legend">
@@ -14828,7 +15085,7 @@ function wcRenderLeaderboardTable(stage) {
       <span>${wcEsc(t('wc.star.legend'))}</span>
     </div>`;
 
-  return champCard + jokerBanner + podiumHTML + starLegend + `
+  return champCard + jokerBanner + funFacts + podiumHTML + starLegend + `
     <div style="font-size:12.5px;color:var(--text-mute);margin-bottom:10px">
       ${ranked.length} ${t('wc.lb.count')}
     </div>
