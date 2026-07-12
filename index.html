@@ -3352,6 +3352,7 @@ textarea.form-control { resize: vertical; min-height: 80px; line-height: 1.6; }
   margin-top: 4px; line-height: 1.4;
 }
 
+.wc-summary-ko { display:flex; flex-direction:column; gap:8px; margin-top:10px; width:100%; text-align:start; }
 .wcv-match {
   background: var(--card-2);
   border: 1px solid var(--border-soft);
@@ -14110,6 +14111,10 @@ function wcRenderStageCard(stage) {
         ${expanded ? `
           ${hasResults ? wcRenderStageSummary(stage, myPred, true) : ''}
           ${stage.id === 'groups' ? wcRenderAllGroupStandingsPublic() : ''}
+          ${stage.id !== 'groups' ? `
+            <button type="button" class="wc-stage-toggle-btn" style="margin-top:8px" onclick="wcGoToStageRanking('${stage.id}')">
+              🏆 ${isEn ? "View this round's ranking" : 'عرض ترتيب هذا الدور'}
+            </button>` : ''}
         ` : ''}
       </div>`;
   } else {
@@ -14296,7 +14301,52 @@ function wcRenderStageSummary(stage, myPred, isClosed) {
     }).filter(Boolean).join('');
     return items ? `<div class="wc-summary-row"><div class="wc-summary-label">${t('wc.summary.label')}</div><div>${items}</div></div>` : '';
   }
-  return '';
+  // Knockout rounds: one row per matchup — my prediction vs the official
+  // result, coloured like the participant-view modal (exact ⭐ / correct
+  // winner / wrong). Before this existed the closed-card toggle revealed
+  // NOTHING for knockout rounds, which read as a dead button.
+  const matchups = (wcState.results.knockout && wcState.results.knockout[stage.id]) || [];
+  const guesses = (myPred.knockout && myPred.knockout[stage.id]) || [];
+  if (!matchups.length) return '';
+  const isEn = (CURRENT_LANG === 'en');
+  const predictedLbl = isEn ? 'Predicted' : 'التوقع';
+  const actualLbl = isEn ? 'Actual' : 'الفعلي';
+  const rows = matchups.map((m, i) => {
+    const g = wcKoEffectiveGuess(stage.id, i, guesses) || {};
+    const home = WC_TEAM_MAP[wcKoResolvedTeamCode(stage.id, i, 'home', m)] || null;
+    const away = WC_TEAM_MAP[wcKoResolvedTeamCode(stage.id, i, 'away', m)] || null;
+    const hasGuess  = g.homeScore != null && g.awayScore != null;
+    const hasActual = wcKoMatchComplete(m);
+    let cls = '';
+    if (hasGuess && hasActual) {
+      const aSide = wcKoWinnerSide(m);
+      const pSide = wcKoWinnerSide(g);
+      const exactScore = (g.homeScore === m.homeScore && g.awayScore === m.awayScore);
+      const exact = exactScore && (!wcKoIsTied(m) || g.penWinner === m.penWinner);
+      if (exact) cls = 'correct';
+      else if (pSide && aSide === pSide) cls = 'partial';
+      else cls = 'wrong';
+    }
+    const exactStar = cls === 'correct' ? `<span class="wcv-exact-star" title="${isEn?'Exact score':'نتيجة مطابقة'}">⭐</span>` : '';
+    const homeHTML = home ? `${home.name}${wcFlagImg(home.code, 14)}` : `<span style="color:var(--text-mute);font-style:italic">${wcEsc(wcKoSlotLabel(stage.id, i, 'home') || t('wc.match.tbd'))}</span>`;
+    const awayHTML = away ? `${wcFlagImg(away.code, 14)}${away.name}` : `<span style="color:var(--text-mute);font-style:italic">${wcEsc(wcKoSlotLabel(stage.id, i, 'away') || t('wc.match.tbd'))}</span>`;
+    const predictedScore = hasGuess ? `${g.homeScore} − ${g.awayScore}` : `— − —`;
+    const predPenTag = (hasGuess && g.homeScore === g.awayScore && g.penWinner)
+      ? ` <span class="wc-pens-tag">${wcEsc(t('wc.ko.pens.tag'))}: ${wcEsc(g.penWinner==='home' ? (home?.name||'') : (away?.name||''))}</span>` : '';
+    const actualPenTag = (hasActual && wcKoIsTied(m) && m.penWinner)
+      ? ` <span class="wc-pens-tag">${wcEsc(t('wc.ko.pens.tag'))}: ${wcEsc(m.penWinner==='home' ? (home?.name||'') : (away?.name||''))}</span>` : '';
+    const actualMeta = hasActual
+      ? `<span>${actualLbl}: <strong>${m.homeScore} − ${m.awayScore}</strong>${actualPenTag}</span>`
+      : '';
+    return `
+      <div class="wcv-match ${cls}">
+        <div class="wcv-match-team home">${homeHTML}</div>
+        <div class="wcv-score">${exactStar}${predictedScore}</div>
+        <div class="wcv-match-team away">${awayHTML}</div>
+        ${actualMeta ? `<div class="wcv-match-meta"><span>${predictedLbl}: ${predictedScore}${predPenTag}</span>${actualMeta}</div>` : ''}
+      </div>`;
+  }).join('');
+  return `<div class="wc-summary-ko">${rows}</div>`;
 }
 
 // ────────────────────────────────────────────────────────────────
@@ -15844,6 +15894,17 @@ window.wcSetKoView = function(mode) {
 window.wcToggleStageDetails = function(stageId) {
   wcState.stageDetailsOpen[stageId] = !wcState.stageDetailsOpen[stageId];
   wcRender();
+};
+
+// Jump from a closed round's card straight to that round's ranking in the
+// leaderboard tab.
+window.wcGoToStageRanking = function(stageId) {
+  wcState.tab = 'leaderboard';
+  wcState.lbShowMe = false;
+  wcState.lbStage = stageId;
+  wcRender();
+  const el = document.querySelector('.wc-card');
+  if (el) el.scrollIntoView({ block: 'start' });
 };
 
 // Renders BOTH bracket variants: the two-sided converging tree (shown on
