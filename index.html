@@ -6642,7 +6642,7 @@ const I18N = {
     'wc.lb.points':           'النقاط',
     'wc.lb.point':            'نقطة',
     'wc.view.correctWin':     'فوز صحيح',
-    'wc.view.correctResult':  'نتيجة صحيحة',
+    'wc.view.correctResult':  'نتيجة مطابقة',
     'wc.lb.champion':         'البطل العام',
     'wc.lb.champions':        'الأبطال المشتركون في الصدارة',
     'wc.lb.champOf':          'بطل توقعات',
@@ -6726,7 +6726,7 @@ const I18N = {
     'wc.golden.label':        'ذهبي',
     'wc.golden.title':        'توقعاتك الذهبية في هذا الدور',
     'wc.golden.tooltip':      'نتيجة مضبوطة 100%',
-    'wc.star.legend':         'النجمة ⭐ بجانب الاسم تعني أن المشارك أصاب النتيجة المضبوطة 100%، والرقم يوضح عدد النتائج الصحيحة التي حققها — كلما زادت إصاباته زاد الرقم.',
+    'wc.star.legend':         'النجمة ⭐ بجانب الاسم تعني أن المشارك أصاب النتيجة المضبوطة 100% في مباريات الأدوار الإقصائية، والرقم يوضح عدد هذه النتائج المطابقة.',
     // 🧠 quiz
     'wc.quiz.title':          'اختبر ثقافتك الرياضية',
     'wc.quiz.tag':            'للمتعة فقط',
@@ -6995,7 +6995,7 @@ const I18N = {
     'wc.lb.points':           'Points',
     'wc.lb.point':            'pts',
     'wc.view.correctWin':     'Correct Wins',
-    'wc.view.correctResult':  'Correct Results',
+    'wc.view.correctResult':  'Exact results',
     'wc.lb.champion':         'Overall Champion',
     'wc.lb.champions':        'Joint Champions',
     'wc.lb.champOf':          'Champion of',
@@ -7078,7 +7078,7 @@ const I18N = {
     'wc.golden.label':        'Golden',
     'wc.golden.title':        'Your golden picks in this round',
     'wc.golden.tooltip':      '100% exact score',
-    'wc.star.legend':         'The star ⭐ next to a name means the participant nailed a 100% exact score — the number shows how many exact results they got; the more correct results, the higher it climbs.',
+    'wc.star.legend':         'The star ⭐ next to a name means the participant nailed a 100% exact score in knockout matches — the number is how many exact knockout results they got.',
     // 🧠 quiz
     'wc.quiz.title':          'Test Your Football Knowledge',
     'wc.quiz.tag':            'just for fun',
@@ -12973,8 +12973,8 @@ function wcViewParticipant(participantId) {
         <div class="wcv-stat-value">${matchStats.correctWin}</div>
       </div>
       <div class="wcv-stat-box">
-        <div class="wcv-stat-label">${wcEsc(t('wc.view.correctResult'))}</div>
-        <div class="wcv-stat-value">${matchStats.correctExact}</div>
+        <div class="wcv-stat-label">⭐ ${wcEsc(t('wc.view.correctResult'))}</div>
+        <div class="wcv-stat-value">${wcCountGolden(pred)}</div>
       </div>
     </div>
   `;
@@ -13113,6 +13113,14 @@ function wcViewParticipant(participantId) {
   const body = document.getElementById('wcPredsBody');
   if (body) body.innerHTML = html;
   document.getElementById('wcPredsModal').classList.add('open');
+  // Land the viewer directly on the CURRENT round's section (the only one
+  // expanded — past and future rounds render collapsed behind their
+  // "إظهار" chips). Without this, on a long card the visitor opens onto
+  // the header and has to scroll hunting for the round in play.
+  if (body) requestAnimationFrame(() => {
+    const openSec = body.querySelector('details.wcv-collapsible[open]');
+    if (openSec) openSec.scrollIntoView({ block: 'start' });
+  });
 }
 window.wcViewParticipant = wcViewParticipant;
 
@@ -16176,14 +16184,9 @@ function wcCountGoldenInStage(stageId, pred) {
 function wcCountGolden(pred) {
   if (!pred) return 0;
   let total = 0;
+  // Golden picks are KNOCKOUT exact scores ONLY — exact group-order hits
+  // earn their bonus points but do NOT add to the star badge.
   ['r32','r16','qf','sf','final'].forEach(s => { total += wcCountGoldenInStage(s, pred); });
-  // Also count exact group-order bonuses as golden
-  const actuals = (wcState.results.groups) || {};
-  WC_GROUPS.forEach(g => {
-    const a = actuals[g.id] || [];
-    const p = (pred.groups || {})[g.id] || [];
-    if (a.length === 2 && p.length === 2 && p[0] === a[0] && p[1] === a[1]) total++;
-  });
   return total;
 }
 
