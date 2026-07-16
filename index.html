@@ -5941,6 +5941,7 @@ const I18N = {
     'wc.stage.r16':           'دور الـ16',
     'wc.stage.qf':            'ربع النهائي',
     'wc.stage.sf':            'نصف النهائي',
+    'wc.stage.third':         'المركز الثالث',
     'wc.stage.final':         'النهائي',
     // locked
     'wc.locked.msg':          'سيتم فتح التوقعات قبل بداية الدور',
@@ -6305,6 +6306,7 @@ const I18N = {
     'wc.stage.r16':           'Round of 16',
     'wc.stage.qf':            'Quarter-finals',
     'wc.stage.sf':            'Semi-finals',
+    'wc.stage.third':         'Third Place',
     'wc.stage.final':         'Final',
     'wc.locked.msg':          'Predictions will open before the round begins',
     'wc.locked.opens':        'Opens',
@@ -10111,6 +10113,17 @@ const WC_STAGES = [
     closesAt: '2026-07-14T19:00:00Z',
     matchCount: 2,
   },
+  { id: 'third', name: 'المركز الثالث', icon: '🥉',
+    // Third-place play-off — contested by the two SEMI-FINAL LOSERS
+    // (feeds specially, see WC_KO_FEED / wcKoPrevStageId below).
+    // Opens together with the Final, right after the last SF (Atlanta,
+    // 19:00 UTC Jul 15) → 21:45 UTC Jul 15 (01:45 Muscat Jul 16).
+    opensAt:  '2026-07-15T21:45:00Z',
+    // Fallback only — third-place match: Miami, Jul 18. Once the admin
+    // enters the real kickoff time, that time wins over this date.
+    closesAt: '2026-07-18T19:00:00Z',
+    matchCount: 1,
+  },
   { id: 'final', name: 'النهائي', icon: '🏆',
     // Last SF (Atlanta) kicks off 19:00 UTC Jul 15.
     // Opens ~2h45m later → 21:45 UTC Jul 15 (01:45 Muscat Jul 16).
@@ -10265,7 +10278,7 @@ function wcFlagImg(code, h) {
 // Knockout rounds in bracket order — used to find the round that feeds a
 // given slot. (Groups isn't here: it feeds R32 by qualification, not by
 // a fixed bracket index.)
-const WC_KO_ORDER = ['r32', 'r16', 'qf', 'sf', 'final'];
+const WC_KO_ORDER = ['r32', 'r16', 'qf', 'sf', 'third', 'final'];
 
 // Real official FIFA World Cup 2026 knockout feed map: for each round,
 // which TWO array indices of the PREVIOUS round feed each slot's
@@ -10295,8 +10308,22 @@ const WC_KO_FEED = {
   r16:   [[2, 5], [0, 3], [1, 4], [6, 7], [11, 10], [9, 8], [14, 13], [12, 15]],
   qf:    [[0, 1], [4, 5], [2, 3], [6, 7]],
   sf:    [[0, 1], [2, 3]],
+  third: [[0, 1]], // fed by the SEMI-FINAL LOSERS (see WC_KO_TAKES_LOSER)
   final: [[0, 1]],
 };
+
+// Which earlier round feeds each knockout round. Both 'third' and 'final'
+// are fed by the semi-finals — the Final takes the WINNERS, the third-place
+// play-off takes the LOSERS — so this can't be derived from array order
+// (WC_STAGES has 'third' sitting between 'sf' and 'final').
+const WC_KO_PREV = { r16: 'r32', qf: 'r16', sf: 'qf', third: 'sf', final: 'sf' };
+const WC_KO_TAKES_LOSER = { third: true };
+
+function wcKoLoserCode(m) {
+  const side = wcKoWinnerSide(m);
+  if (!side) return null;
+  return side === 'h' ? (m.away || null) : (m.home || null);
+}
 
 // A not-yet-determined knockout slot is more useful labelled "Winner of
 // Netherlands × Morocco" than a bare "TBD" whenever that's knowable —
@@ -10305,15 +10332,18 @@ const WC_KO_FEED = {
 // (caller falls back to plain TBD) whenever that feeder match isn't
 // known yet either.
 function wcKoSlotLabel(stageId, idx, side) {
-  const pos = WC_KO_ORDER.indexOf(stageId);
-  if (pos <= 0) return null;
+  const prevId = WC_KO_PREV[stageId];
+  if (!prevId) return null;
   const feed = WC_KO_FEED[stageId] && WC_KO_FEED[stageId][idx];
   if (!feed) return null;
-  const prevMatches = (wcState.results.knockout && wcState.results.knockout[WC_KO_ORDER[pos - 1]]) || [];
+  const prevMatches = (wcState.results.knockout && wcState.results.knockout[prevId]) || [];
   const fm = prevMatches[side === 'home' ? feed[0] : feed[1]];
   if (!fm || !fm.home || !fm.away) return null;
   const h = WC_TEAM_MAP[fm.home], a = WC_TEAM_MAP[fm.away];
   if (!h || !a) return null;
+  if (WC_KO_TAKES_LOSER[stageId]) {
+    return (CURRENT_LANG === 'en') ? `Loser: ${h.name} vs ${a.name}` : `الخاسر من ${h.name} × ${a.name}`;
+  }
   return (CURRENT_LANG === 'en') ? `Winner: ${h.name} vs ${a.name}` : `الفائز من ${h.name} × ${a.name}`;
 }
 
@@ -10328,14 +10358,15 @@ function wcKoSlotLabel(stageId, idx, side) {
 function wcKoResolvedTeamCode(stageId, idx, side, m) {
   const direct = m && m[side];
   if (direct) return direct;
-  const pos = WC_KO_ORDER.indexOf(stageId);
-  if (pos <= 0) return null;
+  const prevId = WC_KO_PREV[stageId];
+  if (!prevId) return null;
   const feed = WC_KO_FEED[stageId] && WC_KO_FEED[stageId][idx];
   if (!feed) return null;
-  const prevMatches = (wcState.results.knockout && wcState.results.knockout[WC_KO_ORDER[pos - 1]]) || [];
+  const prevMatches = (wcState.results.knockout && wcState.results.knockout[prevId]) || [];
   const fm = prevMatches[side === 'home' ? feed[0] : feed[1]];
   if (!fm || !wcKoMatchComplete(fm)) return null;
-  return wcKoWinnerCode(fm);
+  // The third-place play-off auto-advances the semi-final LOSERS.
+  return WC_KO_TAKES_LOSER[stageId] ? wcKoLoserCode(fm) : wcKoWinnerCode(fm);
 }
 
 // Decorative bunting strip across the top of the hero banner — every one
@@ -10480,7 +10511,13 @@ function wcStageStatus(stage) {
   // (The admin's force-open override above still wins over this rule.)
   const stagePos = WC_STAGES.findIndex(s => s.id === stage.id);
   const nextStage = stagePos >= 0 ? WC_STAGES[stagePos + 1] : null;
-  if (nextStage && now >= new Date(nextStage.opensAt).getTime()) return 'closed';
+  // Only apply the guarantee when the next round opens strictly LATER than
+  // this one — the third-place play-off and the Final share the same window
+  // (both open right after the last semi-final), so the Final's opening
+  // must never force-close the third-place round.
+  if (nextStage
+      && new Date(nextStage.opensAt).getTime() > new Date(stage.opensAt).getTime()
+      && now >= new Date(nextStage.opensAt).getTime()) return 'closed';
 
   // Knockout stages close progressively, match by match: each individual
   // match locks the instant IT kicks off (handled in the predict form), but
@@ -10682,7 +10719,7 @@ function wcSubscribe() {
     if (!wcState.results.groups) wcState.results.groups = {};
     if (!wcState.results.groupStats) wcState.results.groupStats = {};
     if (!wcState.results.knockout) wcState.results.knockout = {};
-    ['r32','r16','qf','sf','final'].forEach(s => {
+    ['r32','r16','qf','sf','third','final'].forEach(s => {
       if (!Array.isArray(wcState.results.knockout[s])) wcState.results.knockout[s] = [];
     });
     wcMaybeRender('results');
@@ -10731,7 +10768,7 @@ function wcPredictionPickCount(p) {
     n += Array.isArray(groups[gid]) ? groups[gid].filter(Boolean).length : 0;
   });
   const ko = p.knockout || {};
-  ['r32', 'r16', 'qf', 'sf', 'final'].forEach(sid => {
+  ['r32', 'r16', 'qf', 'sf', 'third', 'final'].forEach(sid => {
     (ko[sid] || []).forEach(g => {
       if (g && g.homeScore != null && g.awayScore != null) n++;
     });
@@ -10769,6 +10806,7 @@ async function wcSaveMyPrediction() {
       r16:   stampKO('r16'),
       qf:    stampKO('qf'),
       sf:    stampKO('sf'),
+      third: stampKO('third'),
       final: stampKO('final'),
     }
   };
@@ -11341,7 +11379,7 @@ function wcViewParticipant(participantId) {
   `;
 
   // ── Knockout sections ────────────────────────────────────────
-  const koStages = ['r32','r16','qf','sf','final'];
+  const koStages = ['r32','r16','qf','sf','third','final'];
   const correctLbl = (CURRENT_LANG === 'en') ? 'Actual' : 'الفعلي';
   const predictedLbl = (CURRENT_LANG === 'en') ? 'Predicted' : 'التوقع';
 
@@ -11636,6 +11674,7 @@ function wcPointsByStage(pred) {
     r16:    wcScoreKO('r16', pred),
     qf:     wcScoreKO('qf',  pred),
     sf:     wcScoreKO('sf',  pred),
+    third:  wcScoreKO('third', pred),
     final:  wcScoreKO('final', pred),
     joker:  wcJokerStatus(pred).pts,
   };
@@ -11643,7 +11682,7 @@ function wcPointsByStage(pred) {
 
 function wcTotal(pred) {
   const by = wcPointsByStage(pred);
-  return by.groups + by.r32 + by.r16 + by.qf + by.sf + by.final + by.joker;
+  return by.groups + by.r32 + by.r16 + by.qf + by.sf + by.third + by.final + by.joker;
 }
 
 // Counts, across all decided knockout matches, how many times this
@@ -11653,7 +11692,7 @@ function wcTotal(pred) {
 // a strict subset of correctWin). Used for the participant stat boxes.
 function wcParticipantMatchStats(pred) {
   let correctWin = 0, correctExact = 0;
-  ['r32', 'r16', 'qf', 'sf', 'final'].forEach(stageId => {
+  ['r32', 'r16', 'qf', 'sf', 'third', 'final'].forEach(stageId => {
     const actuals = (wcState.results.knockout && wcState.results.knockout[stageId]) || [];
     const guesses = (pred.knockout && pred.knockout[stageId]) || [];
     actuals.forEach((a, i) => {
@@ -11712,8 +11751,9 @@ function wcInitDraft() {
       r16:   alignKO('r16'),
       qf:    alignKO('qf'),
       sf:    alignKO('sf'),
+      third: alignKO('third'),
       final: alignKO('final'),
-    } : { r32: [], r16: [], qf: [], sf: [], final: [] }
+    } : { r32: [], r16: [], qf: [], sf: [], third: [], final: [] }
   };
 }
 
@@ -12891,7 +12931,7 @@ function wcComputeFunFacts() {
   const preds = wcState.predictions || [];
   const N = preds.length;
   if (!N) return facts;
-  const stageIds = ['r32', 'r16', 'qf', 'sf', 'final'];
+  const stageIds = ['r32', 'r16', 'qf', 'sf', 'third', 'final'];
 
   // Pass 1 — per stage: per-participant correct counts + per-match hitters
   const perStage = {};
@@ -13313,7 +13353,7 @@ function wcStageMissingItems(pred, stage) {
 // Admin overview: for every registered participant, show how much they've
 // predicted so far in every stage — group stage included — through the final.
 function wcRenderAdminParticipantsProgress() {
-  const allStages = WC_STAGES; // groups, r32, r16, qf, sf, final
+  const allStages = WC_STAGES; // groups, r32, r16, qf, sf, third, final
   const players = (wcState.predictions || [])
     .slice()
     .sort((a, b) => String(a.name || '').localeCompare(String(b.name || '')));
@@ -13446,11 +13486,11 @@ function wcExportCompetitionData() {
 
   // ── Sheet 1: Leaderboard / latest snapshot per participant ──
   const lbHeader = isEn
-    ? ['Rank', 'Name', 'Total points', 'Groups', 'Round of 32', 'Round of 16', 'Quarter-finals', 'Semi-finals', 'Final', 'Joker bonus', 'Last saved']
-    : ['الترتيب', 'الاسم', 'مجموع النقاط', 'المجموعات', 'دور الـ32', 'دور الـ16', 'ربع النهائي', 'نصف النهائي', 'النهائي', 'مكافأة الجوكر', 'آخر حفظ'];
+    ? ['Rank', 'Name', 'Total points', 'Groups', 'Round of 32', 'Round of 16', 'Quarter-finals', 'Semi-finals', 'Third Place', 'Final', 'Joker bonus', 'Last saved']
+    : ['الترتيب', 'الاسم', 'مجموع النقاط', 'المجموعات', 'دور الـ32', 'دور الـ16', 'ربع النهائي', 'نصف النهائي', 'المركز الثالث', 'النهائي', 'مكافأة الجوكر', 'آخر حفظ'];
   const lbRows = ranked.map((p, i) => [
     ranks[i], p.name, p.score,
-    p.byStage.groups, p.byStage.r32, p.byStage.r16, p.byStage.qf, p.byStage.sf, p.byStage.final,
+    p.byStage.groups, p.byStage.r32, p.byStage.r16, p.byStage.qf, p.byStage.sf, p.byStage.third, p.byStage.final,
     p.byStage.joker,
     fmtTs(p.ts),
   ]);
@@ -13795,13 +13835,13 @@ function wcRenderAdminStage(stage) {
 // previous round's results are still incomplete — in which case the caller
 // falls back to the full team list.
 function wcAdmQualifiedTeams(stageId) {
-  const pos = WC_KO_ORDER.indexOf(stageId);
-  if (pos <= 0) return null; // r32 or unknown stage → full list
-  const prevStage = WC_KO_ORDER[pos - 1];
+  const prevStage = WC_KO_PREV[stageId];
+  if (!prevStage) return null; // r32 or unknown stage → full list
   const prevMatches = (wcState.results.knockout && wcState.results.knockout[prevStage]) || [];
+  const takesLoser = !!WC_KO_TAKES_LOSER[stageId]; // third-place = SF LOSERS
   const codes = [];
   prevMatches.forEach(m => {
-    const w = wcKoWinnerCode(m);
+    const w = takesLoser ? wcKoLoserCode(m) : wcKoWinnerCode(m);
     if (w && !codes.includes(w)) codes.push(w);
   });
   return codes.length ? codes : null;
@@ -13960,7 +14000,7 @@ function wcWireEvents() {
       }
       // Block submit if any knockout draft has a tied score without a penalty-shootout winner
       const tiedNoPen = [];
-      ['r32','r16','qf','sf','final'].forEach(sid => {
+      ['r32','r16','qf','sf','third','final'].forEach(sid => {
         const arr = (wcState.draft.knockout && wcState.draft.knockout[sid]) || [];
         arr.forEach((g, i) => {
           if (!g) return;
@@ -14595,6 +14635,19 @@ function wcRenderBracketTreeFinalCol() {
     }
   }
 
+  // Third-place play-off, shown right under the trophy in the centre column.
+  const thirdStage = WC_STAGES.find(s => s.id === 'third');
+  let thirdHtml = '';
+  if (thirdStage) {
+    const tStatus = wcStageStatus(thirdStage);
+    const tAll = (wcState.results.knockout && wcState.results.knockout.third) || [];
+    const tDraftAll = (wcState.draft && wcState.draft.knockout && wcState.draft.knockout.third) || [];
+    const tCard = wcRenderBracketMatch(thirdStage, 0, tAll[0] || {}, tDraftAll[0] || {}, tStatus);
+    thirdHtml = `
+      <div class="wcbt-col-label is-${tStatus}" style="margin-top:14px">🥉 ${wcEsc(t('wc.stage.third'))}</div>
+      <div class="wcbt-final-card">${tCard}</div>`;
+  }
+
   return `
     <div class="wcbt-final-col">
       <div class="wcbt-col-label is-${status}">🏆 ${wcEsc(t('wc.stage.final'))}</div>
@@ -14604,6 +14657,7 @@ function wcRenderBracketTreeFinalCol() {
         <div class="wc-bracket-trophy-label">${wcEsc(t('wc.bracket.champion'))}</div>
         ${championHtml}
       </div>
+      ${thirdHtml}
     </div>`;
 }
 
@@ -14808,7 +14862,7 @@ function wcCountGolden(pred) {
   let total = 0;
   // Golden picks are KNOCKOUT exact scores ONLY — exact group-order hits
   // earn their bonus points but do NOT add to the star badge.
-  ['r32','r16','qf','sf','final'].forEach(s => { total += wcCountGoldenInStage(s, pred); });
+  ['r32','r16','qf','sf','third','final'].forEach(s => { total += wcCountGoldenInStage(s, pred); });
   return total;
 }
 
