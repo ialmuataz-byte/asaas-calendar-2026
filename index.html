@@ -3025,6 +3025,19 @@ details.wcv-collapsible:not([open]) > summary .wcv-chip-hide { display: none; }
 }
 .wc-stage-card-body { margin-top: 4px; }
 
+/* Combined "third place + final" card: sub-section headers + divider */
+.wc-finals-sub-title {
+  font-family: 'Co Headline', 'Tajawal', sans-serif;
+  font-size: 14.5px; font-weight: 700;
+  color: var(--text);
+  display: flex; align-items: center; gap: 7px;
+  margin: 10px 0 8px;
+}
+.wc-finals-divider {
+  border-top: 1px dashed var(--border, rgba(0,0,0,.12));
+  margin: 16px 0 6px;
+}
+
 .wc-badge {
   display: inline-flex; align-items: center; gap: 5px;
   font-size: 11.5px; font-weight: 700;
@@ -5942,6 +5955,7 @@ const I18N = {
     'wc.stage.qf':            'ربع النهائي',
     'wc.stage.sf':            'نصف النهائي',
     'wc.stage.third':         'المركز الثالث',
+    'wc.stage.finals':        'المركز الثالث والنهائي',
     'wc.stage.final':         'النهائي',
     // locked
     'wc.locked.msg':          'سيتم فتح التوقعات قبل بداية الدور',
@@ -6307,6 +6321,7 @@ const I18N = {
     'wc.stage.qf':            'Quarter-finals',
     'wc.stage.sf':            'Semi-finals',
     'wc.stage.third':         'Third Place',
+    'wc.stage.finals':        'Third Place & Final',
     'wc.stage.final':         'Final',
     'wc.locked.msg':          'Predictions will open before the round begins',
     'wc.locked.opens':        'Opens',
@@ -10553,6 +10568,18 @@ function wcCurrentOpenStage() {
   return open.length ? open[open.length - 1] : null;
 }
 
+// Combined status for the "third place + final" section: the two rounds
+// share one prediction window, so the UI presents them as a single card
+// and a single round chip. Open while EITHER is still open; closed only
+// once BOTH are done.
+function wcFinalsComboStatus() {
+  const s3 = wcStageStatus(WC_STAGES.find(s => s.id === 'third'));
+  const sf = wcStageStatus(WC_STAGES.find(s => s.id === 'final'));
+  if (s3 === 'open' || sf === 'open') return 'open';
+  if (s3 === 'closed' && sf === 'closed') return 'closed';
+  return 'upcoming';
+}
+
 // Has this specific knockout match kicked off yet? Used to lock its
 // prediction inputs individually (independent of whether the round as a
 // whole, or the official result, has come in).
@@ -11887,6 +11914,8 @@ function wcDefaultActiveRound() {
 // Used by the hero round-chips, the opportunity card's jump button, and
 // admin-edit deep links.
 window.wcSetActiveRound = function(stageId) {
+  // The third-place round lives inside the combined "finals" card.
+  if (stageId === 'third') stageId = 'final';
   wcState.tab = 'predict';
   wcState.activeRound = stageId;
   wcState.activeRoundPinned = true; // user chose this round explicitly — stop auto-following
@@ -11926,20 +11955,33 @@ function wcRenderOpportunityCard() {
   wcEnsureDraft();
 
   const isEn = (typeof CURRENT_LANG !== 'undefined' && CURRENT_LANG === 'en');
-  const stage = wcCurrentOpenStage();
+  let stage = wcCurrentOpenStage();
+
+  // The third-place play-off + Final are shown as ONE combined section, so
+  // the opportunity card aggregates across BOTH while either is open —
+  // otherwise a missing third-place pick would read "complete" here even
+  // though the submit gate is still blocking.
+  const finalsCombo = !!(stage && (stage.id === 'final' || stage.id === 'third'));
+  const comboStages = finalsCombo
+    ? ['third', 'final'].map(id => WC_STAGES.find(s => s.id === id))
+                        .filter(s => s && wcStageStatus(s) === 'open')
+    : null;
 
   if (!stage) {
     const upcoming = WC_STAGES.filter(s => wcStageStatus(s) === 'upcoming')
                               .sort((a, b) => new Date(a.opensAt) - new Date(b.opensAt))[0];
     if (upcoming) {
       const remain = wcFormatRemaining(new Date(upcoming.opensAt).getTime() - wcState.now);
+      const upFinals = (upcoming.id === 'third' || upcoming.id === 'final');
+      const upIcon = upFinals ? '🏆' : upcoming.icon;
+      const upName = upFinals ? t('wc.stage.finals') : t('wc.stage.' + upcoming.id);
       return `
         <div class="wc-opportunity upcoming">
           <div class="wc-oc-top">
             <div class="wc-oc-ico">⏳</div>
             <div class="wc-oc-head">
               <div class="wc-oc-eyebrow">${isEn ? 'Next round' : 'الدور القادم'}</div>
-              <div class="wc-oc-title">${upcoming.icon} ${wcEsc(t('wc.stage.' + upcoming.id))}</div>
+              <div class="wc-oc-title">${upIcon} ${wcEsc(upName)}</div>
             </div>
           </div>
           <div class="wc-oc-sub">${isEn ? `Opens in ${remain}` : `يفتح بعد ${remain}`}</div>
@@ -11957,17 +11999,19 @@ function wcRenderOpportunityCard() {
       </div>`;
   }
 
-  const stageName = wcEsc(t('wc.stage.' + stage.id));
+  const stageName = wcEsc(finalsCombo ? t('wc.stage.finals') : t('wc.stage.' + stage.id));
+  const stageIcon = finalsCombo ? '🏆' : stage.icon;
 
   // Round is open, but the admin hasn't entered its matchups yet.
   if (stage.id !== 'groups') {
-    const matches = (wcState.results.knockout && wcState.results.knockout[stage.id]) || [];
-    const hasMatchups = matches.some(m => m && m.home && m.away);
+    const checkStages = finalsCombo ? comboStages : [stage];
+    const hasMatchups = checkStages.some(s =>
+      ((wcState.results.knockout && wcState.results.knockout[s.id]) || []).some(m => m && m.home && m.away));
     if (!hasMatchups) {
       return `
         <div class="wc-opportunity waiting">
           <div class="wc-oc-top">
-            <div class="wc-oc-ico">${stage.icon}</div>
+            <div class="wc-oc-ico">${stageIcon}</div>
             <div class="wc-oc-head">
               <div class="wc-oc-eyebrow">${isEn ? 'Open now' : 'مفتوح الآن'}</div>
               <div class="wc-oc-title">${stageName}</div>
@@ -11978,9 +12022,19 @@ function wcRenderOpportunityCard() {
     }
   }
 
-  const progress = wcStageSubmitProgress(wcState.draft, stage);
+  let progress, remainMs;
+  if (finalsCombo) {
+    // Sum picks + take the latest closing time across the open sub-rounds.
+    progress = comboStages.reduce((acc, s) => {
+      const p = wcStageSubmitProgress(wcState.draft, s);
+      return { completed: acc.completed + p.completed, total: acc.total + p.total };
+    }, { completed: 0, total: 0 });
+    remainMs = Math.max(...comboStages.map(s => wcStageEffectiveCloseTime(s))) - wcState.now;
+  } else {
+    progress = wcStageSubmitProgress(wcState.draft, stage);
+    remainMs = wcStageEffectiveCloseTime(stage) - wcState.now;
+  }
   const remaining = Math.max(0, progress.total - progress.completed);
-  const remainMs = wcStageEffectiveCloseTime(stage) - wcState.now;
   const remainStr = wcFormatRemaining(remainMs);
   const unit = stage.id === 'groups' ? (isEn ? 'groups' : 'مجموعة') : (isEn ? 'matches' : 'مباريات');
   const allDone = remaining === 0;
@@ -11998,7 +12052,7 @@ function wcRenderOpportunityCard() {
   return `
     <div class="wc-opportunity ${allDone ? 'done' : ''}" id="wcOpportunityCard">
       <div class="wc-oc-top">
-        <div class="wc-oc-ico">${stage.icon}</div>
+        <div class="wc-oc-ico">${stageIcon}</div>
         <div class="wc-oc-head">
           <div class="wc-oc-eyebrow">${isEn ? 'Current round' : 'الدور الحالي'}</div>
           <div class="wc-oc-title">${stageName}</div>
@@ -12008,8 +12062,8 @@ function wcRenderOpportunityCard() {
       <div class="wc-oc-chips">${statusChip}${timeChip}${countChip}</div>
       ${allDone
         ? `<div class="wc-oc-sub">${isEn ? 'All set — your picks are saved. You can still edit them before the deadline.' : 'جاهز؟ توقعاتك محفوظة ويمكنك تعديلها قبل الإغلاق'}</div>
-           <button type="button" class="wc-oc-btn" style="margin-top:10px" onclick="wcScrollToStage('${stage.id}')">${isEn ? '✏️ Edit your predictions' : '✏️ تعديل التوقعات'}</button>`
-        : `<button type="button" class="wc-oc-btn" onclick="wcScrollToStage('${stage.id}')">${ctaLabel}</button>`}
+           <button type="button" class="wc-oc-btn" style="margin-top:10px" onclick="wcScrollToStage('${finalsCombo ? 'final' : stage.id}')">${isEn ? '✏️ Edit your predictions' : '✏️ تعديل التوقعات'}</button>`
+        : `<button type="button" class="wc-oc-btn" onclick="wcScrollToStage('${finalsCombo ? 'final' : stage.id}')">${ctaLabel}</button>`}
     </div>`;
 }
 
@@ -12172,6 +12226,7 @@ function wcRenderPredict() {
       // a round finishes and the next one opens, the form shown is the new
       // round's, never the finished one.
       if (!wcState.activeRound || !wcState.activeRoundPinned) wcState.activeRound = wcDefaultActiveRound();
+      if (wcState.activeRound === 'third') wcState.activeRound = 'final'; // merged section
       const activeStage = WC_STAGES.find(s => s.id === wcState.activeRound) || groupsStageObj;
       const activeCard = wcRenderStageCard(activeStage);
       stageCards = wcRenderRoundSelector(activeStage.id) + activeCard
@@ -12384,15 +12439,18 @@ function wcRenderStageOverview() {
   // Show stage statuses to non-registered users
   return `
     <div class="wc-stage-title" style="margin-top:18px">📅 ${t('wc.stages.title').replace('📅 ','')}</div>
-    ${WC_STAGES.map(s => {
-      const st = wcStageStatus(s);
+    ${WC_STAGES.filter(s => s.id !== 'third').map(s => {
+      const isFinals = (s.id === 'final');
+      const st = isFinals ? wcFinalsComboStatus() : wcStageStatus(s);
+      const label = isFinals ? t('wc.stage.finals') : t('wc.stage.'+s.id);
+      const icon = isFinals ? '🏆' : s.icon;
       const sub = st === 'open' ? (CURRENT_LANG==='en' ? 'You can submit your predictions now' : 'يمكنك الآن إرسال توقعاتك')
                 : st === 'closed' ? (CURRENT_LANG==='en' ? 'Predictions closed' : 'تم إغلاق التوقعات')
                 : (CURRENT_LANG==='en' ? `Predictions open on ${wcFmtDateAr(s.opensAt)}` : `سيتم فتح التوقعات يوم ${wcFmtDateAr(s.opensAt)}`);
       return `
         <div class="wc-stage-card ${st}">
           <div class="wc-stage-card-header">
-            <div class="wc-stage-card-title"><span>${s.icon}</span> ${t('wc.stage.'+s.id)}</div>
+            <div class="wc-stage-card-title"><span>${icon}</span> ${label}</div>
             ${wcStatusBadge(st)}
           </div>
           <div class="wc-stage-card-sub">${sub}</div>
@@ -12402,6 +12460,11 @@ function wcRenderStageOverview() {
 }
 
 function wcRenderStageCard(stage) {
+  // The third-place play-off and the Final share one prediction window, so
+  // they're presented as ONE combined section — 'third' renders nothing on
+  // its own, and 'final' renders the combined card containing both.
+  if (stage.id === 'third') return '';
+  if (stage.id === 'final') return wcRenderFinalsCard();
   const realStatus = wcStageStatus(stage);
   const adminEdit = !!wcState.editTargetId;
   // While an admin is editing a participant on their behalf, treat every
@@ -12476,6 +12539,91 @@ function wcRenderStageCard(stage) {
   }
 
   return `<div class="wc-stage-card ${status}" id="wcStageCard-${stage.id}">${header}${body}</div>`;
+}
+
+// ── Combined "third place + final" card ──────────────────────────
+// One section for both rounds: they open together (right after the last
+// semi-final), so splitting them across two cards/chips just made the
+// participant hunt for the second one. Each sub-block keeps its OWN
+// open/closed logic (the third-place match kicks off a day before the
+// Final), and every match still locks itself individually at kickoff.
+function wcRenderFinalsCard() {
+  const thirdStage = WC_STAGES.find(s => s.id === 'third');
+  const finalStage = WC_STAGES.find(s => s.id === 'final');
+  const adminEdit = !!wcState.editTargetId;
+  const isEn = (typeof CURRENT_LANG !== 'undefined' && CURRENT_LANG === 'en');
+  const realStatus = wcFinalsComboStatus();
+  const status = adminEdit ? 'open' : realStatus;
+  const myPred = wcState.predictions.find(p => p.id === wcEffectiveId());
+
+  const header = `
+    <div class="wc-stage-card-header">
+      <div class="wc-stage-card-title"><span>🏆</span> ${t('wc.stage.finals')}</div>
+      ${wcStatusBadge(realStatus)}
+    </div>
+  `;
+
+  let body = '';
+  if (status === 'upcoming') {
+    body = `
+      <div class="wc-locked-body">
+        <div class="wc-locked-ico">🔐</div>
+        <div class="wc-locked-msg">${t('wc.locked.msg')}</div>
+        <div class="wc-locked-date">📅 ${t('wc.locked.opens')}: ${wcFmtDateAr(finalStage.opensAt)}</div>
+        <div class="wc-locked-date" style="opacity:.7">${t('wc.locked.closes')}: ${wcFmtDateAr(finalStage.closesAt)}</div>
+      </div>`;
+  } else if (status === 'closed') {
+    const by = myPred ? wcPointsByStage(myPred) : null;
+    const myPts = by ? (by.third + by.final) : 0;
+    const golden = myPred ? (wcCountGoldenInStage('third', myPred) + wcCountGoldenInStage('final', myPred)) : 0;
+    const hasResults = (sid) => ((wcState.results.knockout && wcState.results.knockout[sid]) || []).some(m => m.homeScore != null);
+    const anyResults = hasResults('third') || hasResults('final');
+    const expanded = !!wcState.stageDetailsOpen['final'];
+    const toggleBtn = anyResults ? `
+      <button type="button" class="wc-stage-toggle-btn" onclick="wcToggleStageDetails('final')">
+        ${expanded
+          ? `🔼 ${isEn ? 'Hide standings & picks' : 'إخفاء الترتيب والتوقعات'}`
+          : `🔽 ${isEn ? 'Show standings & picks' : 'عرض الترتيب والتوقعات'}`}
+      </button>` : '';
+    const subSummary = (s) => hasResults(s.id) ? `
+      <div class="wc-finals-sub-title">${s.icon} ${t('wc.stage.' + s.id)}</div>
+      ${wcRenderStageSummary(s, myPred, true)}
+      <button type="button" class="wc-stage-toggle-btn" style="margin-top:8px" onclick="wcGoToStageRanking('${s.id}')">
+        🏆 ${isEn ? "View this round's ranking" : 'عرض ترتيب هذا الدور'}
+      </button>` : '';
+    body = `
+      <div class="wc-closed-body">
+        ${myPred ? `<div class="wc-closed-points">${t('wc.closed.points')}: <strong>${myPts}</strong>${golden > 0 ? ` <span class="wc-golden-badge" title="${wcEsc(t('wc.golden.tooltip'))}">${golden} ${wcEsc(t('wc.golden.label'))}</span>` : ''}</div>` : ''}
+        ${toggleBtn}
+        ${expanded ? subSummary(thirdStage) + subSummary(finalStage) : ''}
+      </div>`;
+  } else {
+    // OPEN — the two sub-rounds stacked in one body. A sub whose window has
+    // already closed (third-place match kicked off) still shows, read-only.
+    const isGuest = !wcState.myName && !adminEdit;
+    const sub = (s) => {
+      const subStatus = adminEdit ? 'open' : wcStageStatus(s);
+      const matches = (wcState.results.knockout && wcState.results.knockout[s.id]) || [];
+      const hasMatchups = matches.length > 0 && matches.some(m => m.home || m.away);
+      let inner;
+      if (!hasMatchups) {
+        inner = `<div class="wc-empty"><div class="wc-empty-ico">⏳</div>${t('wc.empty.matchups')}</div>`;
+      } else {
+        inner = wcRenderKOForm(s, isGuest);
+      }
+      const subPts = (subStatus === 'closed' && myPred)
+        ? `<div class="wc-closed-points" style="margin-top:6px">${t('wc.closed.points')}: <strong>${wcPointsByStage(myPred)[s.id]}</strong></div>`
+        : '';
+      return `
+        <div class="wc-finals-sub" id="wcFinalsSub-${s.id}">
+          <div class="wc-finals-sub-title">${s.icon} ${t('wc.stage.' + s.id)}</div>
+          ${inner}${subPts}
+        </div>`;
+    };
+    body = `<div class="wc-stage-card-body">${sub(thirdStage)}<div class="wc-finals-divider"></div>${sub(finalStage)}</div>`;
+  }
+
+  return `<div class="wc-stage-card ${status}" id="wcStageCard-final">${header}${body}</div>`;
 }
 
 function wcRenderGroupsForm(isGuest) {
@@ -13769,7 +13917,9 @@ function wcAdmStageIsOpen(stageId) {
   if (Object.prototype.hasOwnProperty.call(wcState.admStageOpen, stageId)) {
     return !!wcState.admStageOpen[stageId];
   }
-  return stageId === wcCurrentRoundStageId();
+  let cur = wcCurrentRoundStageId();
+  if (cur === 'third') cur = 'final'; // merged "third place + final" section
+  return stageId === cur;
 }
 function wcToggleAdminStage(stageId) {
   wcState.admStageOpen[stageId] = !wcAdmStageIsOpen(stageId);
@@ -13777,7 +13927,10 @@ function wcToggleAdminStage(stageId) {
 }
 window.wcToggleAdminStage = wcToggleAdminStage;
 
-function wcRenderAdminStage(stage) {
+// Builds just the match rows (team selects + score + kickoff + pens) for
+// one knockout round — shared by the normal per-round admin section and
+// the combined "third place + final" section below.
+function wcAdmStageRows(stage) {
   const arr = (wcState.results.knockout && wcState.results.knockout[stage.id]) || [];
   while (arr.length < stage.matchCount) arr.push({});
 
@@ -13785,11 +13938,8 @@ function wcRenderAdminStage(stage) {
   const kickoffLabel = isEn ? 'Kickoff time' : 'وقت انطلاق المباراة';
   const startedLabel = isEn ? 'Started — prediction locked' : 'انطلقت — التوقع مقفل';
   const notStartedLabel = isEn ? 'Not started yet' : 'لم تنطلق بعد';
-  const open = wcAdmStageIsOpen(stage.id);
-  const toggleLbl = open ? (isEn ? '🔼 Hide' : '🔼 إخفاء') : (isEn ? '👁 Show' : '👁 إظهار');
-  const collapsedHint = isEn ? 'Section hidden — press "Show" to enter this round\'s results.' : 'القسم مخفي — اضغط «إظهار» لإدخال نتائج هذا الدور.';
 
-  const body = `
+  return `
       ${stage.id === 'r32' ? `<button class="wc-gs-seed-btn" onclick="wcLoadSeedKnockoutResults()">📥 ${t('wc.ko.loadSeed')}</button>` : ''}
       ${Array.from({length: stage.matchCount}, (_, i) => {
         const m = arr[i] || {};
@@ -13815,13 +13965,39 @@ function wcRenderAdminStage(stage) {
             ${wcRenderPensRow('admin', stage.id, i, home, away, m, false)}
           </div>`;
       }).join('')}`;
+}
+
+function wcRenderAdminStage(stage) {
+  // The third-place play-off is entered inside the combined
+  // "third place + final" section rendered from the 'final' stage.
+  if (stage.id === 'third') return '';
+
+  const isEn = (CURRENT_LANG === 'en');
+  const open = wcAdmStageIsOpen(stage.id);
+  const toggleLbl = open ? (isEn ? '🔼 Hide' : '🔼 إخفاء') : (isEn ? '👁 Show' : '👁 إظهار');
+  const collapsedHint = isEn ? 'Section hidden — press "Show" to enter this round\'s results.' : 'القسم مخفي — اضغط «إظهار» لإدخال نتائج هذا الدور.';
+
+  let icon = stage.icon;
+  let title = `${t('wc.stage.'+stage.id)} ${t('wc.admin.ko')} (${stage.matchCount} ${t('wc.admin.matches')})`;
+  let body;
+  if (stage.id === 'final') {
+    const thirdStage = WC_STAGES.find(s => s.id === 'third');
+    icon = '🏆';
+    title = `${t('wc.stage.finals')} ${t('wc.admin.ko')} (${(thirdStage ? thirdStage.matchCount : 0) + stage.matchCount} ${t('wc.admin.matches')})`;
+    body = `
+      ${thirdStage ? `<div class="wc-finals-sub-title">🥉 ${t('wc.stage.third')}</div>${wcAdmStageRows(thirdStage)}<div class="wc-finals-divider"></div>` : ''}
+      <div class="wc-finals-sub-title">🏆 ${t('wc.stage.final')}</div>
+      ${wcAdmStageRows(stage)}`;
+  } else {
+    body = wcAdmStageRows(stage);
+  }
 
   return `
     <div class="wc-admin-section">
       <div class="wc-admin-section-title wc-adm-collap-head" role="button" tabindex="0"
            onclick="wcToggleAdminStage('${stage.id}')"
            onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();wcToggleAdminStage('${stage.id}');}">
-        <span>${stage.icon} ${t('wc.stage.'+stage.id)} ${t('wc.admin.ko')} (${stage.matchCount} ${t('wc.admin.matches')})</span>
+        <span>${icon} ${title}</span>
         <span class="wc-adm-toggle-btn">${toggleLbl}</span>
       </div>
       ${open ? body : `<div class="wc-adm-collapsed-hint">${collapsedHint}</div>`}
@@ -14459,15 +14635,21 @@ function wcStartCountdownLoop() {
 // indication of which one, and a one-tap way to jump to another.
 function wcRenderRoundSelector(activeId) {
   const isEn = (CURRENT_LANG === 'en');
-  const chips = WC_STAGES.map(s => {
-    const status = wcStageStatus(s);
+  // 'third' has no chip of its own — it lives inside the combined
+  // "third place + final" section, represented by the 'final' chip.
+  const chips = WC_STAGES.filter(s => s.id !== 'third').map(s => {
+    const isFinals = (s.id === 'final');
+    const status = isFinals ? wcFinalsComboStatus() : wcStageStatus(s);
+    const label = isFinals ? t('wc.stage.finals') : t('wc.stage.' + s.id);
+    const icon = isFinals ? '🏆' : s.icon;
+    const active = (s.id === activeId) || (isFinals && activeId === 'third');
     const dot = status === 'open' ? '<span class="wc-round-dot open"></span>'
       : status === 'closed' ? '<span class="wc-round-dot closed"></span>' : '';
     return `
-      <button type="button" class="wc-round-chip ${s.id === activeId ? 'active' : ''}"
+      <button type="button" class="wc-round-chip ${active ? 'active' : ''}"
               onclick="wcSetActiveRound('${s.id}')">
-        <span class="ico">${s.icon}</span>
-        <span>${wcEsc(t('wc.stage.' + s.id))}</span>
+        <span class="ico">${icon}</span>
+        <span>${wcEsc(label)}</span>
         ${dot}
       </button>`;
   }).join('');
