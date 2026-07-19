@@ -6237,7 +6237,7 @@ const I18N = {
     'wc.quiz.separate':       'نقاط الاختبار للمتعة فقط ولا علاقة لها بنقاط مسابقة التوقعات.',
     // 🃏 Joker challenge
     'wc.joker.title':         'تحدّي الجوكر',
-    'wc.joker.banner':        'توقّع الفائزين في كل المباريات المتبقية (ربع النهائي حتى النهائي) واكسب مكافأة ضخمة فوق نقاطك الأساسية:',
+    'wc.joker.banner':        'توقّع الفائزين في كل المباريات المتبقية (ربع النهائي حتى النهائي، بما فيها مباراة المركز الثالث — 8 مباريات) واكسب مكافأة ضخمة فوق نقاطك الأساسية:',
     'wc.joker.gold':          'الجوكر الذهبي',
     'wc.joker.silver':        'الجوكر الفضي',
     'wc.joker.bronze':        'الجوكر البرونزي',
@@ -6613,7 +6613,7 @@ const I18N = {
     'wc.quiz.separate':       'Quiz points are just for fun and have nothing to do with the prediction contest points.',
     // 🃏 Joker challenge
     'wc.joker.title':         'The Joker Challenge',
-    'wc.joker.banner':        'Predict the winners of ALL remaining matches (quarter-finals through the final) and earn a huge bonus on top of your regular points:',
+    'wc.joker.banner':        'Predict the winners of ALL remaining matches (quarter-finals through the final, including the third-place match — 8 matches) and earn a huge bonus on top of your regular points:',
     'wc.joker.gold':          'Gold Joker',
     'wc.joker.silver':        'Silver Joker',
     'wc.joker.bronze':        'Bronze Joker',
@@ -10318,7 +10318,7 @@ const WC_SCORING = {
 // ────────────────────────────────────────────────────────────────
 // 🃏 THE JOKER CHALLENGE — end-of-tournament bonus
 // ────────────────────────────────────────────────────────────────
-// Across ALL matches of the stages listed below (QF + SF + Final),
+// Across ALL matches of the stages listed below (QF + SF + Third place + Final),
 // a participant who predicts the correct WINNER (side only — exact
 // score not required) in enough matches earns a one-time bonus ON TOP
 // of the regular points:
@@ -10331,7 +10331,7 @@ const WC_SCORING = {
 // bonus that could later be revoked. A missing prediction counts as a
 // wrong pick. Tiers MUST stay sorted by `miss` ascending.
 const WC_JOKER = {
-  stages: ['qf', 'sf', 'final'],
+  stages: ['qf', 'sf', 'third', 'final'],
   tiers: [
     { id: 'gold',   medal: '🥇', miss: 0, pts: 35 },
     { id: 'silver', medal: '🥈', miss: 1, pts: 20 },
@@ -10569,7 +10569,7 @@ const wcState = {
   editTargetName: '',
   predictions: [],
   feedback: [],            // marketing-team feedback wall entries {id, name, text, ts}
-  results: { groups: {}, groupStats: {}, knockout: { r32:[], r16:[], qf:[], sf:[], final:[] } },
+  results: { groups: {}, groupStats: {}, knockout: { r32:[], r16:[], qf:[], sf:[], third:[], final:[] } },
   tab: 'predict',          // predict | leaderboard | admin
   lbStage: 'overall',      // overall | groups | r32 | r16 | qf | sf | final
   fixStage: 'r16',         // which knockout round the admin prediction-repair tool shows
