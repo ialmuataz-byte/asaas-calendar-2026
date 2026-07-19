@@ -15766,5 +15766,594 @@ function initWorldCup() {
 initWorldCup();
 
 </script>
+<!-- ════════════════════════════════════════════════════════════════
+     🏆 CORONATION CEREMONY — auto-plays once the FINAL is decided.
+     A cinematic full-screen sequence that reveals the top-3 one by
+     one (bronze → silver → drumroll → GOLD champion with fireworks,
+     rotating light rays, a falling crown and a live count-up), then
+     ends on an animated podium with a share button. Plays itself
+     once per device per final result; a floating 🏆 button lets
+     anyone replay it at any time afterwards.
+     ════════════════════════════════════════════════════════════════ -->
+<style>
+/* ── Ceremony overlay ─────────────────────────────────────────── */
+.wcx-overlay {
+  position: fixed; inset: 0; z-index: 99990;
+  background: radial-gradient(120% 90% at 50% 0%, #1d3a26 0%, #0c1a10 55%, #060d08 100%);
+  display: flex; align-items: center; justify-content: center;
+  opacity: 0; transition: opacity .6s ease;
+  overflow: hidden; direction: rtl;
+  font-family: 'Co Headline', 'Tajawal', sans-serif;
+}
+.wcx-overlay.on { opacity: 1; }
+.wcx-overlay.closing { opacity: 0; }
+.wcx-confetti { position: absolute; inset: 0; width: 100%; height: 100%; pointer-events: none; }
+
+/* Rotating golden light rays behind the champion */
+.wcx-rays {
+  position: absolute; left: 50%; top: 42%; width: 160vmax; height: 160vmax;
+  transform: translate(-50%, -50%);
+  background: conic-gradient(from 0deg,
+    rgba(224,199,122,.16) 0deg 12deg,  transparent 12deg 30deg,
+    rgba(224,199,122,.16) 30deg 42deg, transparent 42deg 60deg,
+    rgba(224,199,122,.16) 60deg 72deg, transparent 72deg 90deg,
+    rgba(224,199,122,.16) 90deg 102deg, transparent 102deg 120deg,
+    rgba(224,199,122,.16) 120deg 132deg, transparent 132deg 150deg,
+    rgba(224,199,122,.16) 150deg 162deg, transparent 162deg 180deg,
+    rgba(224,199,122,.16) 180deg 192deg, transparent 192deg 210deg,
+    rgba(224,199,122,.16) 210deg 222deg, transparent 222deg 240deg,
+    rgba(224,199,122,.16) 240deg 252deg, transparent 252deg 270deg,
+    rgba(224,199,122,.16) 270deg 282deg, transparent 282deg 300deg,
+    rgba(224,199,122,.16) 300deg 312deg, transparent 312deg 330deg,
+    rgba(224,199,122,.16) 330deg 342deg, transparent 342deg 360deg);
+  opacity: 0; transition: opacity 1s ease;
+  animation: wcxSpin 30s linear infinite;
+  pointer-events: none;
+}
+.wcx-rays.on { opacity: 1; }
+@keyframes wcxSpin { to { transform: translate(-50%, -50%) rotate(360deg); } }
+
+.wcx-stage {
+  position: relative; z-index: 2; width: min(560px, 92vw);
+  text-align: center; color: #FBF6EC; padding: 20px 0 90px;
+}
+
+/* Skip / hint / close chrome */
+.wcx-skip {
+  position: absolute; top: max(16px, env(safe-area-inset-top)); inset-inline-start: 16px; z-index: 5;
+  background: rgba(255,255,255,.08); color: #E9DDCA;
+  border: 1px solid rgba(255,255,255,.18); border-radius: 999px;
+  padding: 8px 18px; font-family: inherit; font-size: 14px; cursor: pointer;
+  backdrop-filter: blur(6px); transition: background .2s;
+}
+.wcx-skip:hover { background: rgba(255,255,255,.16); }
+.wcx-tap-hint {
+  position: absolute; bottom: max(18px, env(safe-area-inset-bottom)); left: 0; right: 0; z-index: 5;
+  text-align: center; font-size: 12.5px; color: rgba(233,221,202,.55);
+  animation: wcxPulse 2s ease-in-out infinite; pointer-events: none;
+}
+@keyframes wcxPulse { 0%,100% { opacity: .45; } 50% { opacity: .95; } }
+
+/* ── Scene: intro ─────────────────────────────────────────────── */
+.wcx-intro-ball { font-size: 64px; animation: wcxBounceIn .8s cubic-bezier(.2,1.4,.4,1) both; }
+.wcx-intro-h {
+  font-size: clamp(30px, 7vw, 44px); font-weight: 700; margin: 14px 0 8px;
+  animation: wcxRise .7s .25s cubic-bezier(.2,1,.3,1) both;
+}
+.wcx-intro-s {
+  font-size: clamp(16px, 4vw, 20px); color: #E0C77A;
+  animation: wcxRise .7s .5s cubic-bezier(.2,1,.3,1) both;
+}
+@keyframes wcxBounceIn { from { transform: scale(0) rotate(-180deg); opacity: 0; } to { transform: scale(1) rotate(0); opacity: 1; } }
+@keyframes wcxRise { from { transform: translateY(26px); opacity: 0; } to { transform: translateY(0); opacity: 1; } }
+
+/* ── Scene: bronze / silver reveal cards ──────────────────────── */
+.wcx-medal-card {
+  margin: 0 auto; width: min(430px, 88vw);
+  border-radius: 22px; padding: 30px 24px 26px;
+  animation: wcxCardUp .75s cubic-bezier(.2,1.3,.35,1) both;
+  border: 1px solid rgba(255,255,255,.16);
+  box-shadow: 0 24px 70px rgba(0,0,0,.5);
+}
+.wcx-medal-card.bronze { background: linear-gradient(160deg, #4c3423 0%, #2b1d12 100%); }
+.wcx-medal-card.silver { background: linear-gradient(160deg, #4a5058 0%, #23272c 100%); }
+@keyframes wcxCardUp { from { transform: translateY(70vh) scale(.85); opacity: 0; } to { transform: translateY(0) scale(1); opacity: 1; } }
+.wcx-medal-emoji { font-size: 58px; animation: wcxMedalSwing 1.2s .35s ease-in-out both; display: inline-block; }
+@keyframes wcxMedalSwing { 0% { transform: rotate(0); } 25% { transform: rotate(-14deg); } 55% { transform: rotate(9deg); } 80% { transform: rotate(-4deg); } 100% { transform: rotate(0); } }
+.wcx-medal-rank { font-size: 15px; letter-spacing: .5px; color: rgba(255,255,255,.65); margin-top: 10px; }
+.wcx-medal-name { font-size: clamp(24px, 6vw, 32px); font-weight: 700; margin: 8px 0 4px; line-height: 1.35; }
+.wcx-medal-pts  { font-size: 17px; color: #E0C77A; }
+
+/* ── Scene: drumroll ──────────────────────────────────────────── */
+.wcx-drum-h { font-size: clamp(24px, 6vw, 34px); font-weight: 700; animation: wcxHeartbeat 1s ease-in-out infinite; }
+@keyframes wcxHeartbeat { 0%,100% { transform: scale(1); } 14% { transform: scale(1.07); } 28% { transform: scale(1); } 42% { transform: scale(1.05); } }
+.wcx-drum-dots { margin-top: 18px; font-size: 34px; letter-spacing: 8px; color: #E0C77A; }
+.wcx-drum-dots span { opacity: 0; animation: wcxDot 1.4s infinite; display: inline-block; }
+.wcx-drum-dots span:nth-child(2) { animation-delay: .35s; }
+.wcx-drum-dots span:nth-child(3) { animation-delay: .7s; }
+@keyframes wcxDot { 0% { opacity: 0; transform: translateY(6px); } 30% { opacity: 1; transform: translateY(0); } 70% { opacity: 1; } 100% { opacity: 0; } }
+
+/* ── Scene: GOLD champion ─────────────────────────────────────── */
+.wcx-champ { position: relative; }
+.wcx-crown {
+  font-size: 46px; display: block; position: relative; z-index: 3;
+  animation: wcxCrownDrop 1s .9s cubic-bezier(.3,1.6,.4,1) both;
+}
+@keyframes wcxCrownDrop { from { transform: translateY(-46vh) rotate(-30deg); opacity: 0; } 70% { transform: translateY(6px) rotate(4deg); opacity: 1; } 100% { transform: translateY(0) rotate(0); opacity: 1; } }
+.wcx-trophy {
+  font-size: clamp(88px, 22vw, 130px); line-height: 1;
+  animation: wcxTrophyIn .9s cubic-bezier(.2,1.5,.35,1) both;
+  filter: drop-shadow(0 0 34px rgba(224,199,122,.55));
+  margin-top: -6px;
+}
+@keyframes wcxTrophyIn { from { transform: scale(0) rotate(20deg); opacity: 0; } to { transform: scale(1) rotate(0); opacity: 1; } }
+.wcx-champ-label {
+  margin-top: 14px; font-size: clamp(14px, 3.6vw, 17px); letter-spacing: 1px;
+  color: #E0C77A; text-transform: uppercase;
+  animation: wcxRise .6s 1.1s both;
+}
+.wcx-champ-name {
+  font-size: clamp(34px, 9vw, 54px); font-weight: 800; line-height: 1.3;
+  margin: 8px 0 6px; padding: 0 8px;
+  background: linear-gradient(100deg, #8a6a1f 0%, #E0C77A 22%, #FFF3C4 40%, #C9A646 55%, #FFF3C4 72%, #8a6a1f 100%);
+  background-size: 220% 100%;
+  -webkit-background-clip: text; background-clip: text; color: transparent;
+  animation: wcxRise .7s 1.25s both, wcxShimmer 2.6s 1.6s linear infinite;
+  filter: drop-shadow(0 2px 18px rgba(201,166,70,.35));
+}
+@keyframes wcxShimmer { from { background-position: 200% 0; } to { background-position: -20% 0; } }
+.wcx-champ-pts {
+  font-size: clamp(20px, 5vw, 26px); color: #FBF6EC; animation: wcxRise .6s 1.5s both;
+}
+.wcx-champ-pts b { color: #E0C77A; font-size: 1.25em; }
+.wcx-champ-golden { margin-top: 10px; font-size: 14px; color: rgba(233,221,202,.75); animation: wcxRise .6s 1.7s both; }
+
+/* ── Scene: final podium ──────────────────────────────────────── */
+.wcx-podium-title { font-size: clamp(22px, 5.5vw, 30px); font-weight: 700; margin-bottom: 26px; animation: wcxRise .6s both; }
+.wcx-podium { display: flex; align-items: flex-end; justify-content: center; gap: 12px; }
+.wcx-pcol { flex: 1; max-width: 150px; min-width: 0; }
+.wcx-pmedal { font-size: 34px; animation: wcxBounceIn .7s both; }
+.wcx-pname {
+  font-size: clamp(13px, 3.4vw, 16px); font-weight: 700; margin: 6px 0 4px; line-height: 1.35;
+  overflow-wrap: anywhere;
+}
+.wcx-ppts { font-size: 12.5px; color: #E0C77A; margin-bottom: 8px; }
+.wcx-pbar {
+  border-radius: 12px 12px 0 0; transform-origin: bottom; animation: wcxGrow .9s cubic-bezier(.2,1.2,.3,1) both;
+  display: flex; align-items: flex-start; justify-content: center; padding-top: 8px;
+  font-weight: 800; font-size: 20px; color: rgba(0,0,0,.45);
+}
+@keyframes wcxGrow { from { transform: scaleY(0); } to { transform: scaleY(1); } }
+.wcx-pcol.gold   .wcx-pbar { height: 128px; background: linear-gradient(180deg, #E0C77A, #9c7c2c); box-shadow: 0 0 34px rgba(224,199,122,.4); animation-delay: .55s; }
+.wcx-pcol.silver .wcx-pbar { height: 92px;  background: linear-gradient(180deg, #cfd6dd, #7d8790); animation-delay: .3s; }
+.wcx-pcol.bronze .wcx-pbar { height: 66px;  background: linear-gradient(180deg, #d29a67, #8a5a30); animation-delay: .42s; }
+.wcx-pcol.gold .wcx-pmedal { font-size: 44px; animation-delay: .6s; }
+.wcx-pcol.gold .wcx-pname { font-size: clamp(15px, 4vw, 19px); color: #FFF3C4; }
+.wcx-actions { display: flex; gap: 10px; justify-content: center; margin-top: 30px; flex-wrap: wrap; animation: wcxRise .6s 1s both; }
+.wcx-btn {
+  font-family: inherit; font-size: 15px; cursor: pointer; border-radius: 999px; padding: 11px 24px;
+  border: 1px solid rgba(255,255,255,.22); background: rgba(255,255,255,.08); color: #FBF6EC;
+  transition: transform .15s, background .2s;
+}
+.wcx-btn:hover { transform: translateY(-2px); background: rgba(255,255,255,.15); }
+.wcx-btn.primary { background: linear-gradient(135deg, #E0C77A, #C9A646); color: #2b1d0a; border: none; font-weight: 700; }
+.wcx-btn.primary:hover { background: linear-gradient(135deg, #ecd68f, #d4b254); }
+
+/* ── Floating replay button (visible once the Final is decided) ─ */
+.wcx-replay {
+  position: fixed; bottom: calc(18px + env(safe-area-inset-bottom)); inset-inline-start: 18px; z-index: 9800;
+  width: 54px; height: 54px; border-radius: 50%; border: none; cursor: pointer; font-size: 25px;
+  background: linear-gradient(135deg, #E0C77A, #C9A646);
+  box-shadow: 0 6px 22px rgba(201,166,70,.5), 0 0 0 4px rgba(201,166,70,.18);
+  animation: wcxReplayGlow 2.4s ease-in-out infinite;
+  display: flex; align-items: center; justify-content: center;
+}
+@keyframes wcxReplayGlow {
+  0%,100% { box-shadow: 0 6px 22px rgba(201,166,70,.5), 0 0 0 4px rgba(201,166,70,.18); }
+  50%     { box-shadow: 0 6px 26px rgba(201,166,70,.75), 0 0 0 9px rgba(201,166,70,.08); }
+}
+@media (prefers-reduced-motion: reduce) {
+  .wcx-overlay *, .wcx-rays, .wcx-replay { animation-duration: .01s !important; animation-iteration-count: 1 !important; }
+}
+</style>
+<script>
+/* ════════════════════════════════════════════════════════════════
+   🏆 Coronation ceremony logic
+   ════════════════════════════════════════════════════════════════ */
+(function () {
+  'use strict';
+
+  // ── i18n ───────────────────────────────────────────────────────
+  const WCX_T = {
+    ar: {
+      intro1: 'انتهى المونديال!', intro2: 'حان وقت تتويج أبطال التوقعات ✨',
+      rank3: 'المركز الثالث', rank2: 'المركز الثاني',
+      drum: 'وبطل التوقعات هو',
+      champLabel: '🏆 بطل توقعات أساس 2026 🏆',
+      pts: 'نقطة', golden: 'توقع ذهبي (نتيجة مطابقة)',
+      podiumTitle: 'منصة التتويج',
+      share: '📤 مشاركة النتيجة', close: 'إغلاق', skip: 'تخطّي ⏭', tap: 'اضغط في أي مكان للمتابعة',
+      replayTitle: 'إعادة حفل التتويج',
+      shareHead: '🏆 نتائج مسابقة توقعات أساس — مونديال 2026',
+      copied: 'تم نسخ النتيجة! 📋',
+    },
+    en: {
+      intro1: 'The World Cup is over!', intro2: 'Time to crown our prediction champions ✨',
+      rank3: '3rd place', rank2: '2nd place',
+      drum: 'And the champion is',
+      champLabel: '🏆 Asaas 2026 Prediction Champion 🏆',
+      pts: 'pts', golden: 'golden pick(s) (exact score)',
+      podiumTitle: 'The Podium',
+      share: '📤 Share the result', close: 'Close', skip: 'Skip ⏭', tap: 'Tap anywhere to continue',
+      replayTitle: 'Replay the ceremony',
+      shareHead: '🏆 Asaas Prediction Contest results — World Cup 2026',
+      copied: 'Result copied! 📋',
+    },
+  };
+  function wcxT(k) {
+    const en = (typeof CURRENT_LANG !== 'undefined' && CURRENT_LANG === 'en');
+    return (en ? WCX_T.en : WCX_T.ar)[k];
+  }
+
+  // ── When is the tournament "done"? Once the Final has a result. ─
+  function wcxFinalMatch() {
+    try { return ((wcState.results.knockout || {}).final || [])[0] || null; } catch (e) { return null; }
+  }
+  function wcxFinalDecided() {
+    const fm = wcxFinalMatch();
+    return !!(fm && typeof wcKoMatchComplete === 'function' && wcKoMatchComplete(fm));
+  }
+  // Signature of the final result — if the admin later corrects the
+  // score, the ceremony re-arms and plays again with the new champion.
+  function wcxSignature() {
+    const fm = wcxFinalMatch() || {};
+    return ['wcxSeen', fm.home, fm.away, fm.homeScore, fm.awayScore, fm.penWinner || ''].join(':');
+  }
+  // ── Celebration window: the ceremony auto-plays on EVERY visit for
+  // 3 days after the Final, then goes quiet (the floating 🏆 replay
+  // button stays forever). Anchor: the Final's official kickoff time
+  // when the admin entered one (consistent for everyone); otherwise
+  // the first moment THIS device saw the result (per-device fallback).
+  const WCX_WINDOW_MS = 3 * 24 * 60 * 60 * 1000;
+  function wcxWindowOpen() {
+    const fm = wcxFinalMatch() || {};
+    let anchor = null;
+    if (fm.kickoffAt) {
+      const t = new Date(fm.kickoffAt).getTime();
+      if (!isNaN(t)) anchor = t;
+    }
+    if (anchor == null) {
+      const key = wcxSignature() + ':first';
+      try {
+        let first = parseInt(localStorage.getItem(key), 10);
+        if (!first || isNaN(first)) { first = Date.now(); localStorage.setItem(key, String(first)); }
+        anchor = first;
+      } catch (e) { anchor = Date.now(); }
+    }
+    return (Date.now() - anchor) < WCX_WINDOW_MS;
+  }
+
+  // ── Ranking: same maths as the leaderboard (dense ranks) ───────
+  function wcxRanked() {
+    const ranked = (wcState.predictions || [])
+      .map(p => ({ p, score: wcTotal(p) }))
+      .sort((a, b) => b.score - a.score || a.p.ts - b.p.ts);
+    const out = []; let lastRank = 0, lastScore = null;
+    ranked.forEach(r => {
+      if (r.score !== lastScore) { lastRank += 1; lastScore = r.score; }
+      out.push({ ...r, rank: lastRank });
+    });
+    return out;
+  }
+  function wcxGroup(rank) { return wcxRanked().filter(r => r.rank === rank); }
+  function wcxNames(group) {
+    const sep = (typeof CURRENT_LANG !== 'undefined' && CURRENT_LANG === 'en') ? ', ' : '، ';
+    return group.map(r => wcEsc(r.p.name)).join(sep);
+  }
+
+  // ── Confetti + fireworks engine (canvas, zero dependencies) ────
+  const WCX_GOLD   = ['#E0C77A', '#C9A646', '#FFF3C4', '#f6e27a', '#d4af37'];
+  const WCX_SILVER = ['#cfd6dd', '#eef1f4', '#9aa4ad', '#ffffff'];
+  const WCX_BRONZE = ['#d29a67', '#b36a3c', '#e8b98d', '#8a5a30'];
+  const WCX_PARTY  = ['#E0C77A', '#4A7A55', '#D9966D', '#FFF3C4', '#7fb08a', '#C9A646'];
+  let wcxCanvas = null, wcxCtx = null, wcxParts = [], wcxRockets = [], wcxRAF = null, wcxRain = false, wcxRainColors = WCX_GOLD;
+
+  function wcxResize() {
+    if (!wcxCanvas) return;
+    wcxCanvas.width = innerWidth * devicePixelRatio;
+    wcxCanvas.height = innerHeight * devicePixelRatio;
+    wcxCtx.setTransform(devicePixelRatio, 0, 0, devicePixelRatio, 0, 0);
+  }
+  function wcxSpawn(x, y, n, colors, spread) {
+    for (let i = 0; i < n; i++) {
+      const a = Math.random() * Math.PI * 2, sp = (spread || 7) * (0.4 + Math.random());
+      wcxParts.push({
+        x, y, vx: Math.cos(a) * sp, vy: Math.sin(a) * sp - 3,
+        w: 5 + Math.random() * 6, h: 8 + Math.random() * 7,
+        rot: Math.random() * Math.PI, vr: (Math.random() - .5) * .3,
+        c: colors[(Math.random() * colors.length) | 0],
+        life: 90 + Math.random() * 70, shape: Math.random() < .25 ? 'circle' : 'rect',
+      });
+    }
+  }
+  function wcxRocket() {
+    wcxRockets.push({ x: innerWidth * (0.15 + Math.random() * 0.7), y: innerHeight + 10, vy: -(9 + Math.random() * 4), fuse: 45 + Math.random() * 25 });
+  }
+  function wcxLoop() {
+    wcxRAF = requestAnimationFrame(wcxLoop);
+    if (!wcxCtx) return;
+    wcxCtx.clearRect(0, 0, innerWidth, innerHeight);
+    // gentle continuous rain while in gold mode
+    if (wcxRain && wcxParts.length < 420) {
+      for (let i = 0; i < 5; i++) wcxParts.push({
+        x: Math.random() * innerWidth, y: -14, vx: (Math.random() - .5) * 1.6, vy: 1.6 + Math.random() * 2.6,
+        w: 5 + Math.random() * 6, h: 8 + Math.random() * 7, rot: Math.random() * Math.PI, vr: (Math.random() - .5) * .25,
+        c: wcxRainColors[(Math.random() * wcxRainColors.length) | 0], life: 500, shape: Math.random() < .25 ? 'circle' : 'rect',
+      });
+    }
+    // rockets rise then explode
+    for (let i = wcxRockets.length - 1; i >= 0; i--) {
+      const r = wcxRockets[i];
+      r.y += r.vy; r.fuse--;
+      wcxCtx.fillStyle = '#FFF3C4';
+      wcxCtx.fillRect(r.x - 1.5, r.y, 3, 9);
+      if (r.fuse <= 0 || r.y < innerHeight * 0.28) {
+        wcxSpawn(r.x, r.y, 46, WCX_GOLD, 6);
+        wcxRockets.splice(i, 1);
+      }
+    }
+    // confetti physics
+    for (let i = wcxParts.length - 1; i >= 0; i--) {
+      const p = wcxParts[i];
+      p.vy += 0.12; p.vx *= 0.992; p.x += p.vx; p.y += p.vy; p.rot += p.vr; p.life--;
+      if (p.life <= 0 || p.y > innerHeight + 30) { wcxParts.splice(i, 1); continue; }
+      wcxCtx.save();
+      wcxCtx.translate(p.x, p.y); wcxCtx.rotate(p.rot);
+      wcxCtx.globalAlpha = Math.min(1, p.life / 45);
+      wcxCtx.fillStyle = p.c;
+      if (p.shape === 'circle') { wcxCtx.beginPath(); wcxCtx.arc(0, 0, p.w / 2, 0, 7); wcxCtx.fill(); }
+      else wcxCtx.fillRect(-p.w / 2, -p.h / 2, p.w, Math.max(1, p.h * Math.abs(Math.cos(p.rot * 1.7))));
+      wcxCtx.restore();
+    }
+  }
+
+  // ── Tiny WebAudio fanfare + drumroll (best-effort, safe) ───────
+  let wcxAC = null;
+  function wcxAudio() {
+    try { wcxAC = wcxAC || new (window.AudioContext || window.webkitAudioContext)(); if (wcxAC.state === 'suspended') wcxAC.resume(); return wcxAC; } catch (e) { return null; }
+  }
+  function wcxTone(freq, t0, dur, gain, type) {
+    const C = wcxAudio(); if (!C) return;
+    try {
+      const o = C.createOscillator(), g = C.createGain();
+      o.type = type || 'triangle'; o.frequency.value = freq;
+      o.connect(g); g.connect(C.destination);
+      const t = C.currentTime + t0;
+      g.gain.setValueAtTime(0.0001, t);
+      g.gain.exponentialRampToValueAtTime(gain || 0.14, t + 0.02);
+      g.gain.exponentialRampToValueAtTime(0.0001, t + dur);
+      o.start(t); o.stop(t + dur + 0.05);
+    } catch (e) {}
+  }
+  function wcxFanfare() { [523, 659, 784, 1047, 1319].forEach((f, i) => wcxTone(f, i * 0.13, 0.55, 0.16)); wcxTone(1568, 0.7, 1.1, 0.12); }
+  function wcxDrumroll(sec) {
+    const C = wcxAudio(); if (!C) return;
+    const n = Math.floor(sec / 0.07);
+    for (let i = 0; i < n; i++) wcxTone(140 + Math.random() * 40, i * 0.07, 0.06, 0.05, 'square');
+  }
+  function wcxDing() { wcxTone(880, 0, 0.35, 0.12); wcxTone(1174, 0.1, 0.45, 0.1); }
+  function wcxVibe(pattern) { try { if (navigator.vibrate) navigator.vibrate(pattern); } catch (e) {} }
+
+  // ── Count-up animation for the champion's points ───────────────
+  function wcxCountUp(el, target, ms) {
+    const t0 = performance.now();
+    (function tick(now) {
+      const k = Math.min(1, (now - t0) / ms);
+      el.textContent = Math.round(target * (1 - Math.pow(1 - k, 3)));
+      if (k < 1) requestAnimationFrame(tick);
+    })(t0);
+  }
+
+  // ── Scenes ─────────────────────────────────────────────────────
+  let wcxOverlayEl = null, wcxSceneIdx = -1, wcxTimer = null, wcxScenes = [];
+
+  function wcxStageEl() { return document.getElementById('wcxStage'); }
+  function wcxRaysOn(on) { const r = document.getElementById('wcxRays'); if (r) r.classList.toggle('on', on); }
+
+  function wcxSceneIntro() {
+    wcxRain = false; wcxRaysOn(false);
+    wcxStageEl().innerHTML = `
+      <div class="wcx-intro-ball">⚽</div>
+      <div class="wcx-intro-h">${wcxT('intro1')}</div>
+      <div class="wcx-intro-s">${wcxT('intro2')}</div>`;
+    wcxSpawn(innerWidth / 2, innerHeight * 0.35, 40, WCX_PARTY, 6);
+    return 2800;
+  }
+  function wcxSceneMedal(rank) {
+    const group = wcxGroup(rank);
+    if (!group.length) return 0; // fewer participants than ranks — skip
+    const isBronze = rank === 3;
+    wcxRain = false; wcxRaysOn(false);
+    wcxStageEl().innerHTML = `
+      <div class="wcx-medal-card ${isBronze ? 'bronze' : 'silver'}">
+        <div class="wcx-medal-emoji">${isBronze ? '🥉' : '🥈'}</div>
+        <div class="wcx-medal-rank">${isBronze ? wcxT('rank3') : wcxT('rank2')}</div>
+        <div class="wcx-medal-name">${wcxNames(group)}</div>
+        <div class="wcx-medal-pts">${group[0].score} ${wcxT('pts')}</div>
+      </div>`;
+    setTimeout(() => wcxSpawn(innerWidth / 2, innerHeight * 0.4, 60, isBronze ? WCX_BRONZE : WCX_SILVER, 8), 450);
+    wcxDing(); wcxVibe(60);
+    return 3400;
+  }
+  function wcxSceneDrum() {
+    wcxRain = false; wcxRaysOn(false);
+    wcxStageEl().innerHTML = `
+      <div class="wcx-drum-h">${wcxT('drum')}</div>
+      <div class="wcx-drum-dots"><span>●</span><span>●</span><span>●</span></div>`;
+    wcxDrumroll(2.6); wcxVibe([40, 80, 40, 80, 40]);
+    return 2800;
+  }
+  function wcxSceneChampion() {
+    const group = wcxGroup(1);
+    if (!group.length) return 0;
+    const score = group[0].score;
+    const goldenTotal = group.reduce((s, r) => s + (typeof wcCountGolden === 'function' ? wcCountGolden(r.p) : 0), 0);
+    wcxRaysOn(true); wcxRain = true; wcxRainColors = WCX_GOLD;
+    wcxStageEl().innerHTML = `
+      <div class="wcx-champ">
+        <span class="wcx-crown">👑</span>
+        <div class="wcx-trophy">🏆</div>
+        <div class="wcx-champ-label">${wcxT('champLabel')}</div>
+        <div class="wcx-champ-name">${wcxNames(group)}</div>
+        <div class="wcx-champ-pts"><b id="wcxCount">0</b> ${wcxT('pts')}</div>
+        ${goldenTotal > 0 ? `<div class="wcx-champ-golden">⭐ ${goldenTotal} ${wcxT('golden')}</div>` : ''}
+      </div>`;
+    // big blast + rockets + count-up
+    wcxSpawn(innerWidth / 2, innerHeight * 0.42, 130, WCX_GOLD, 10);
+    let shots = 0;
+    const gun = setInterval(() => { wcxRocket(); if (++shots >= 8) clearInterval(gun); }, 420);
+    setTimeout(() => { const el = document.getElementById('wcxCount'); if (el) wcxCountUp(el, score, 1400); }, 1450);
+    wcxFanfare(); wcxVibe([80, 60, 80, 60, 200]);
+    return 6500;
+  }
+  function wcxScenePodium() {
+    wcxRaysOn(true); wcxRain = true; wcxRainColors = WCX_PARTY;
+    const g1 = wcxGroup(1), g2 = wcxGroup(2), g3 = wcxGroup(3);
+    const col = (group, cls, medal, num) => group.length ? `
+      <div class="wcx-pcol ${cls}">
+        <div class="wcx-pmedal">${medal}</div>
+        <div class="wcx-pname">${wcxNames(group)}</div>
+        <div class="wcx-ppts">${group[0].score} ${wcxT('pts')}</div>
+        <div class="wcx-pbar">${num}</div>
+      </div>` : '';
+    wcxStageEl().innerHTML = `
+      <div class="wcx-podium-title">🏆 ${wcxT('podiumTitle')}</div>
+      <div class="wcx-podium">
+        ${col(g2, 'silver', '🥈', 2)}
+        ${col(g1, 'gold', '🥇', 1)}
+        ${col(g3, 'bronze', '🥉', 3)}
+      </div>
+      <div class="wcx-actions">
+        <button class="wcx-btn primary" id="wcxShareBtn">${wcxT('share')}</button>
+        <button class="wcx-btn" id="wcxCloseBtn">${wcxT('close')}</button>
+      </div>`;
+    const share = document.getElementById('wcxShareBtn');
+    if (share) share.onclick = (e) => { e.stopPropagation(); wcxShare(); };
+    const close = document.getElementById('wcxCloseBtn');
+    if (close) close.onclick = (e) => { e.stopPropagation(); wcxClose(); };
+    const hint = document.querySelector('.wcx-tap-hint');
+    if (hint) hint.style.display = 'none';
+    return 0; // final scene — stays until closed
+  }
+
+  function wcxNext() {
+    clearTimeout(wcxTimer);
+    wcxSceneIdx++;
+    if (wcxSceneIdx >= wcxScenes.length) { wcxClose(); return; }
+    const dur = wcxScenes[wcxSceneIdx]();
+    if (dur === 0 && wcxSceneIdx < wcxScenes.length - 1) { wcxNext(); return; }  // skipped (missing rank group)
+    if (dur > 0) wcxTimer = setTimeout(wcxNext, dur);
+  }
+
+  // ── Share ──────────────────────────────────────────────────────
+  function wcxShare() {
+    const en = (typeof CURRENT_LANG !== 'undefined' && CURRENT_LANG === 'en');
+    const strip = h => { const d = document.createElement('div'); d.innerHTML = h; return d.textContent; };
+    const lines = [wcxT('shareHead'), ''];
+    [[1, '🥇'], [2, '🥈'], [3, '🥉']].forEach(([rank, medal]) => {
+      const g = wcxGroup(rank);
+      if (g.length) lines.push(`${medal} ${strip(wcxNames(g))} — ${g[0].score} ${wcxT('pts')}`);
+    });
+    lines.push('', location.origin + location.pathname);
+    const text = lines.join('\n');
+    if (navigator.share) { navigator.share({ text }).catch(() => {}); return; }
+    try {
+      navigator.clipboard.writeText(text).then(() => alert(wcxT('copied')));
+    } catch (e) { prompt(en ? 'Copy:' : 'انسخ النص:', text); }
+  }
+
+  // ── Open / close ───────────────────────────────────────────────
+  window.wcxOpenCeremony = function () {
+    if (wcxOverlayEl) return;
+    wcxOverlayEl = document.createElement('div');
+    wcxOverlayEl.className = 'wcx-overlay';
+    wcxOverlayEl.innerHTML = `
+      <canvas class="wcx-confetti" id="wcxConfetti"></canvas>
+      <div class="wcx-rays" id="wcxRays"></div>
+      <div class="wcx-stage" id="wcxStage"></div>
+      <button class="wcx-skip" id="wcxSkipBtn">${wcxT('skip')}</button>
+      <div class="wcx-tap-hint">${wcxT('tap')}</div>`;
+    document.body.appendChild(wcxOverlayEl);
+    document.body.style.overflow = 'hidden';
+    wcxCanvas = document.getElementById('wcxConfetti');
+    wcxCtx = wcxCanvas.getContext('2d');
+    wcxResize();
+    addEventListener('resize', wcxResize);
+    wcxParts = []; wcxRockets = []; wcxRain = false;
+    if (!wcxRAF) wcxLoop();
+    const ov = wcxOverlayEl;
+    requestAnimationFrame(() => ov.classList.add('on'));
+
+    // tap anywhere → next scene; skip → jump straight to the podium
+    wcxOverlayEl.addEventListener('click', () => wcxNext());
+    document.getElementById('wcxSkipBtn').onclick = (e) => {
+      e.stopPropagation();
+      clearTimeout(wcxTimer);
+      wcxSceneIdx = wcxScenes.length - 2; // podium is last
+      wcxNext();
+    };
+
+    wcxScenes = [wcxSceneIntro, () => wcxSceneMedal(3), () => wcxSceneMedal(2), wcxSceneDrum, wcxSceneChampion, wcxScenePodium];
+    wcxSceneIdx = -1;
+    wcxNext();
+  };
+  function wcxClose() {
+    if (!wcxOverlayEl) return;
+    clearTimeout(wcxTimer);
+    wcxOverlayEl.classList.add('closing');
+    const el = wcxOverlayEl; wcxOverlayEl = null;
+    setTimeout(() => {
+      el.remove();
+      document.body.style.overflow = '';
+      cancelAnimationFrame(wcxRAF); wcxRAF = null;
+      wcxParts = []; wcxRockets = []; wcxRain = false;
+      removeEventListener('resize', wcxResize);
+    }, 600);
+  }
+
+  // ── Trigger: runs after every render + on a slow safety poll ───
+  let wcxAutoLaunched = false;
+  window.wcxCeremonyCheck = function () {
+    const done = wcxFinalDecided();
+    // Floating replay button lives only while the trophy is claimable
+    let btn = document.getElementById('wcxReplayBtn');
+    if (done && (wcState.predictions || []).length) {
+      if (!btn) {
+        btn = document.createElement('button');
+        btn.id = 'wcxReplayBtn';
+        btn.className = 'wcx-replay';
+        btn.textContent = '🏆';
+        btn.title = wcxT('replayTitle');
+        btn.onclick = () => window.wcxOpenCeremony();
+        document.body.appendChild(btn);
+      }
+      // Auto-play once per page load, on every visit, for 3 days
+      if (wcxWindowOpen() && !wcxAutoLaunched && !wcxOverlayEl) {
+        wcxAutoLaunched = true;
+        setTimeout(() => window.wcxOpenCeremony(), 1200);
+      }
+    } else if (btn) btn.remove();
+  };
+
+  // Hook into the app's render cycle without touching its internals
+  if (typeof wcRender === 'function') {
+    const wcxOrigRender = wcRender;
+    wcRender = function () { wcxOrigRender.apply(this, arguments); try { window.wcxCeremonyCheck(); } catch (e) {} };
+  }
+  setInterval(() => { try { window.wcxCeremonyCheck(); } catch (e) {} }, 30000);
+  setTimeout(() => { try { window.wcxCeremonyCheck(); } catch (e) {} }, 2500);
+})();
+</script>
+
 </body>
 </html>
